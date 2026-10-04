@@ -180,12 +180,12 @@ const BACKUP_TABLES = ["settings", "exercises", "routines", "routineExercises", 
 export async function exportBackup(database: AppDB = db): Promise<string> {
   const data: Record<string, unknown[]> = {};
   for (const t of BACKUP_TABLES) data[t] = await database.table(t).toArray();
-  return JSON.stringify({ app: "satz-und-strecke", version: 1, exportedAt: new Date().toISOString(), data }, null, 1);
+  return JSON.stringify({ app: "tracker", version: 1, exportedAt: new Date().toISOString(), data }, null, 1);
 }
 
 export async function importBackup(text: string, database: AppDB = db) {
   const parsed = JSON.parse(text);
-  if (parsed?.app !== "satz-und-strecke" || !parsed.data) throw new Error("Diese Datei ist keine Sicherung von Satz & Strecke.");
+  if (parsed?.app !== "tracker" || !parsed.data) throw new Error("Diese Datei ist keine Sicherung von Tracker.");
   await database.transaction("rw", BACKUP_TABLES.map((t) => database.table(t)), async () => {
     for (const t of BACKUP_TABLES) {
       await database.table(t).clear();

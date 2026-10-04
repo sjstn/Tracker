@@ -14,8 +14,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icons/apple-touch-icon.png", "icons/icon.svg"],
       manifest: {
-        name: "Satz & Strecke",
-        short_name: "Satz & Strecke",
+        name: "Tracker",
+        short_name: "Tracker",
         description: "Krafttraining mit Progression und Läufe festhalten",
         lang: "de",
         start_url: "./",

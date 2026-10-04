@@ -1,4 +1,4 @@
-# Satz & Strecke
+# Tracker
 
 Trainings-App fürs iPhone: Krafttraining mit automatischer Progression, Läufe und Körpergewicht.
 Umsetzung der Planung „Gym Tracker – Milestone 1“ (anml) als reine Web-App: **alle Daten bleiben auf dem Gerät**, kein Server, kein Konto, kostenlos hostbar auf Cloudflare Pages oder GitHub Pages.
@@ -48,7 +48,7 @@ git init
 git add .
 git commit -m "Erste Version"
 git branch -M main
-git remote add origin https://github.com/DEIN-NAME/satz-und-strecke.git
+git remote add origin https://github.com/DEIN-NAME/Tracker.git
 git push -u origin main
 ```
 
@@ -56,13 +56,13 @@ git push -u origin main
 
 1. dash.cloudflare.com → „Workers & Pages“ → „Create“ → „Pages“ → „Connect to Git“, Repo wählen
 2. Framework preset: **None**, Build command: `npm run build`, Build output directory: `dist`
-3. „Save and Deploy“ → läuft unter `https://satz-und-strecke.pages.dev`
+3. „Save and Deploy“ → läuft unter `https://tracker.pages.dev`
 
 Jeder `git push` veröffentlicht automatisch. Private Repos sind möglich.
 
 ### GitHub Pages (Alternative)
 
-Repo → Settings → Pages → Source: **GitHub Actions**. Der Workflow in `.github/workflows/github-pages.yml` testet, baut und veröffentlicht bei jedem Push nach `https://DEIN-NAME.github.io/satz-und-strecke/`. Im Gratis-Tarif muss das Repo öffentlich sein (nur der Code, deine Daten bleiben auf dem Handy).
+Repo → Settings → Pages → Source: **GitHub Actions**. Der Workflow in `.github/workflows/github-pages.yml` testet, baut und veröffentlicht bei jedem Push nach `https://DEIN-NAME.github.io/Tracker/`. Im Gratis-Tarif muss das Repo öffentlich sein (nur der Code, deine Daten bleiben auf dem Handy).
 
 ## Aufs iPhone
 

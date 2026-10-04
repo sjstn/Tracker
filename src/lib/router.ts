@@ -31,7 +31,7 @@ export function useRoute(): Route {
     const on = (e: Event) => {
       if (e.type === "popstate") depth = history.state?.depth ?? 0;
       setRoute(parseHash());
-      window.scrollTo(0, 0);
+      document.getElementById("scroller")?.scrollTo(0, 0);
     };
     window.addEventListener("hashchange", on);
     window.addEventListener("popstate", on);
