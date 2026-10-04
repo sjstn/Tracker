@@ -1,0 +1,67 @@
+@import "tailwindcss";
+@import "@fontsource/barlow/400.css";
+@import "@fontsource/barlow/500.css";
+@import "@fontsource/barlow/600.css";
+@import "@fontsource/barlow-condensed/600.css";
+@import "@fontsource/barlow-condensed/700.css";
+
+/* Farbwelt: Hantelscheiben-Blau für Kraft, Tartanbahn-Rot für Laufen,
+   Wettkampf-Gelb ausschließlich für Bestleistungen. Dunkel als Standard (Studio-Licht, OLED). */
+:root {
+  --bg: #12171E;
+  --surface: #1C232D;
+  --surface-2: #252E3A;
+  --ink: #E8ECF0;
+  --ink-soft: #9AA5B1;
+  --line: #2E3946;
+  --plate: #3D63D6;
+  --plate-ink: #8FAEFF;
+  --track: #D94A3A;
+  --track-ink: #F08273;
+  --pr: #F2B705;
+  --ok: #3FA66B;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #E9ECEF; --surface: #FFFFFF; --surface-2: #F3F5F7; --ink: #1B2430; --ink-soft: #5A6573;
+    --line: #CDD3DA; --plate: #2348A8; --plate-ink: #2348A8; --track: #B8382B; --track-ink: #B8382B; --ok: #2E8554;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #E9ECEF; --surface: #FFFFFF; --surface-2: #F3F5F7; --ink: #1B2430; --ink-soft: #5A6573;
+  --line: #CDD3DA; --plate: #2348A8; --plate-ink: #2348A8; --track: #B8382B; --track-ink: #B8382B; --ok: #2E8554;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-plate: var(--plate);
+  --color-plate-ink: var(--plate-ink);
+  --color-track: var(--track);
+  --color-track-ink: var(--track-ink);
+  --color-pr: var(--pr);
+  --color-ok: var(--ok);
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-sans: "Barlow", -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+
+:root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none;
+}
+/* iOS zoomt bei Eingabefeldern unter 16px – daher nie kleiner */
+input, select, textarea { font-size: 16px; }
+:focus-visible { outline: 2px solid var(--plate-ink); outline-offset: 2px; }
+.tnum { font-variant-numeric: tabular-nums; }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
