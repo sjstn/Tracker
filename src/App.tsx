@@ -66,9 +66,11 @@ export function App() {
 
   return (
     <>
-      <main className={`mx-auto max-w-xl px-4 ${hideNav ? "pb-4" : "pb-28"}`}>{screen}</main>
+      <div id="scroller" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <main className={`mx-auto max-w-xl px-4 ${name === "setup" ? "h-full pb-0" : name === "workout" ? "pb-0" : "pb-6"}`}>{screen}</main>
+      </div>
       {!hideNav && (
-        <nav aria-label="Hauptnavigation" className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/90 backdrop-blur"
+        <nav aria-label="Hauptnavigation" className="shrink-0 border-t border-line bg-surface"
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           {draft && (
             <button type="button" onClick={() => navigate("workout")}

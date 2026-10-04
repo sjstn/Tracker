@@ -104,7 +104,7 @@ export function Workout() {
   };
 
   return (
-    <div className="pb-28">
+    <div className={draft.restEndsAt ? "" : "pb-4"}>
       <Header title={draft.routineName ?? "Freies Training"} onBack={() => navigate("home")}
         action={<Elapsed since={draft.startedAt} />} />
       {draft.performedOn && <p className="-mt-1 mb-3 text-sm text-soft">Nachtrag für {niceDate(draft.performedOn)}</p>}
@@ -207,7 +207,7 @@ function RestTimer({ endsAt, onChange }: { endsAt: number; onChange: (t: number 
   }, [left]);
   const done = left <= 0;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 px-4 pt-3 shadow-[0_-4px_12px_rgb(0_0_0/0.04)] backdrop-blur"
+    <div className="sticky bottom-0 z-30 -mx-4 border-t border-line bg-surface/95 px-4 pt-3 shadow-[0_-4px_12px_rgb(0_0_0/0.04)] backdrop-blur"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }} role="timer" aria-live="off">
       <div className="mx-auto flex max-w-xl items-center gap-3">
         <div className="flex-1">

@@ -117,7 +117,7 @@ export function Setup({ startAt }: { startAt?: string }) {
   };
 
   return (
-    <div className="flex min-h-[calc(100dvh-1.5rem)] flex-col pt-4">
+    <div className="flex min-h-full flex-col pt-4">
       {step !== "done" && (
         <div className="flex items-center gap-2">
           <button type="button" aria-label="Zurück" disabled={busy} onClick={goBack}
