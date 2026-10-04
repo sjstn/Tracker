@@ -8,12 +8,13 @@ import { navigate } from "../lib/router";
 
 type Item =
   | { kind: "gym"; id: number; day: string; ts: string; title: string; meta: string; detail: string; pr: boolean }
-  | { kind: "run"; id: number; day: string; ts: string; title: string; meta: string; detail: string };
+  | { kind: "run"; id: number; day: string; ts: string; title: string; meta: string; detail: string }
+  | { kind: "skipped"; id: string; day: string; ts: string; title: string; meta: string; detail: string };
 
 /** Alle Kraft-Einheiten und Läufe, neueste zuerst. */
 async function loadItems(limit?: number): Promise<Item[]> {
-  const [sessions, runs, sets, exercises] = await Promise.all([
-    db.sessions.toArray(), db.runs.toArray(), db.loggedSets.toArray(), db.exercises.toArray(),
+  const [sessions, runs, sets, exercises, planDays] = await Promise.all([
+    db.sessions.toArray(), db.runs.toArray(), db.loggedSets.toArray(), db.exercises.toArray(), db.planDays.toArray(),
   ]);
   const names = new Map(exercises.map((e) => [e.id!, e.name]));
 
@@ -42,11 +43,25 @@ async function loadItems(limit?: number): Promise<Item[]> {
       kind: "run", id: r.id!, day: r.date, ts: r.date + "T12:00:00", title: `Lauf, ${fmt(r.km, 2)} km`,
       meta: `${niceDate(r.date)}, ${clock(r.seconds)}, ${pace(r.seconds, r.km)} min/km`, detail: r.note ?? "",
     })),
+    ...planDays.flatMap((d) => d.items.filter((i) => i.status === "skipped").map((i): Item => ({
+      kind: "skipped", id: i.id, day: d.date, ts: d.date + "T00:00:00", title: i.label, meta: `${niceDate(d.date)}, ausgelassen`, detail: "",
+    }))),
   ].sort((a, b) => b.day.localeCompare(a.day) || b.ts.localeCompare(a.ts));
   return limit ? items.slice(0, limit) : items;
 }
 
 function Row({ item }: { item: Item }) {
+  if (item.kind === "skipped") {
+    return (
+      <li className="flex items-center gap-3 px-4 py-3 text-soft">
+        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-line" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium line-through decoration-1">{item.title}</span>
+          <span className="block text-xs tnum">{item.meta}</span>
+        </span>
+      </li>
+    );
+  }
   return (
     <li>
       <button type="button" onClick={() => navigate(item.kind === "gym" ? `session/${item.id}` : `run/${item.id}`)}
