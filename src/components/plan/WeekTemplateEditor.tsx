@@ -7,7 +7,7 @@ import { Card, Section, Sheet, toast } from "../ui";
 import { Marker } from "./Marker";
 import { usePlanNames, WEEKDAYS, WEEKDAYS_LONG } from "./names";
 
-const MODES: [ShiftMode, string, string][] = [
+export const MODES: [ShiftMode, string, string][] = [
   ["continuous", "Fortlaufend", "Trainings laufen als Reihenfolge weiter, die Wochentage verschieben sich mit."],
   ["fixedWeek", "Feste Woche", "Jeden Montag beginnt die Musterwoche neu, Ruhetage fangen Verschiebungen auf."],
 ];
