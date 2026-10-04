@@ -23,7 +23,7 @@ export function Button({ variant = "quiet", className = "", ...p }: ButtonHTMLAt
 
 export function Header({ title, onBack, action }: { title: string; onBack?: (() => void) | true; action?: ReactNode }) {
   return (
-    <header className="sticky top-0 z-20 -mx-4 mb-2 flex min-h-14 items-center gap-1 bg-bg/95 px-2 backdrop-blur" style={{ top: "env(safe-area-inset-top, 0px)" }}>
+    <header className="sticky top-0 z-20 -mx-4 mb-2 flex min-h-14 items-center gap-1 bg-bg/95 px-2 backdrop-blur">
       {onBack && (
         <button type="button" aria-label="Zurück" onClick={onBack === true ? () => back() : onBack}
           className="flex h-11 w-11 items-center justify-center rounded-lg text-2xl text-soft hover:bg-surface-2">‹</button>

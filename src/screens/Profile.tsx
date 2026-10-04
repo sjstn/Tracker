@@ -4,15 +4,18 @@ import { db, DEFAULT_SETTINGS, getSettings, requestPersistence } from "../db/db"
 import { exportBackup, importBackup } from "../db/repo";
 import { clearPlanUndo, ensureHorizon } from "../db/schedule";
 import type { Settings } from "../db/types";
-import { Button, Card, Field, Header, NumberInput, Section, Select, toast } from "../components/ui";
+import { Button, Card, Field, Header, Input, NumberInput, Section, Select, toast } from "../components/ui";
 import { LineChart } from "../components/LineChart";
+import { ageFromBirthDate, birthYearFromAge, currentAge } from "../lib/profile";
+import { navigate } from "../lib/router";
 import { ACCENTS, THEMES } from "../lib/appearance";
 import { fmt, isoDate, niceDate, num } from "../lib/format";
-import { BufferedNumber } from "./Routines";
+import { BufferedNumber, BufferedText } from "./Routines";
 
 export function Profile() {
   const settings = useLiveQuery(() => getSettings(), []);
   const weights = useLiveQuery(() => db.bodyweight.orderBy("recordedAt").toArray(), []);
+  const running = useLiveQuery(async () => !!(await db.drafts.get("current")), []);
   const [w, setW] = useState("");
   const [persisted, setPersisted] = useState<boolean | null>(null);
   useEffect(() => { navigator.storage?.persisted?.().then(setPersisted).catch(() => setPersisted(null)); }, []);
@@ -33,6 +36,31 @@ export function Profile() {
   return (
     <div>
       <Header title="Ich" />
+
+      <Section title="Über dich">
+        <Card className="grid gap-3 p-4">
+          <BufferedText label="Name" value={settings.name ?? ""} onCommit={(v) => save({ name: v.trim().slice(0, 40) || null })} />
+          <div className="flex items-center gap-2">
+            <span className="w-28 shrink-0 text-sm">Alter</span>
+            <BufferedNumber ariaLabel="Alter in Jahren" decimal={false} value={currentAge(settings)} onCommit={(v) => {
+              if (v !== null && (v < 10 || v > 100)) { toast("Trag ein Alter zwischen 10 und 100 ein."); return; }
+              // Ein reines Alter ersetzt ein gespeichertes Geburtsdatum
+              save({ birthYear: v === null ? null : birthYearFromAge(v), birthDate: null });
+            }} />
+            <span className="text-sm text-soft">Jahre</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-28 shrink-0 text-sm">oder Geburtstag</span>
+            <Input type="date" aria-label="Geburtsdatum" max={isoDate()} value={settings.birthDate ?? ""} className="flex-1" onChange={(e) => {
+              const v = e.target.value;
+              if (!v) { save({ birthDate: null }); return; }
+              const age = ageFromBirthDate(v);
+              if (v > isoDate() || age < 10 || age > 100) { toast("Das Geburtsdatum passt nicht (Alter 10 bis 100)."); return; }
+              save({ birthDate: v, birthYear: Number(v.slice(0, 4)) });
+            }} />
+          </div>
+        </Card>
+      </Section>
 
       <Section title="Darstellung">
         <Card className="divide-y divide-line">
@@ -64,6 +92,14 @@ export function Profile() {
             </div>
           </div>
         </Card>
+      </Section>
+
+      <Section title="Einrichtung">
+        <Card className="flex items-center gap-3 p-4">
+          <p className="flex-1 text-sm text-soft">Größe, Trainingsregeln und Woche Schritt für Schritt einstellen.</p>
+          <Button disabled={!!running} onClick={() => navigate("setup")}>Starten</Button>
+        </Card>
+        {running && <p className="mt-1.5 text-xs text-soft">Geht, sobald das laufende Training beendet ist.</p>}
       </Section>
 
       <Section title="Körpergewicht">
@@ -143,7 +179,7 @@ function Backup({ persisted, onPersist }: { persisted: boolean | null; onPersist
 
   const download = async () => {
     const json = await exportBackup();
-    const name = `satz-und-strecke-${isoDate()}.json`;
+    const name = `tracker-${isoDate()}.json`;
     const file = new File([json], name, { type: "application/json" });
     // Auf dem iPhone öffnet das Teilen-Menü, dort „In Dateien sichern“ wählen
     if (navigator.canShare?.({ files: [file] })) {

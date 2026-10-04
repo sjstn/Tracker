@@ -20,6 +20,11 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   weekTemplate: [[], [], [], [], [], [], []],
   shiftMode: "continuous",
+  name: null,
+  birthDate: null,
+  birthYear: null,
+  setupSeen: false,
+  weekCardHidden: false,
 };
 
 export const MUSCLE_GROUPS = ["Brust", "Rücken", "Beine", "Schultern", "Arme", "Bauch"] as const;
@@ -73,7 +78,7 @@ export class AppDB extends Dexie {
   runPlans!: EntityTable<RunPlan, "id">;
   planDays!: EntityTable<PlanDay, "date">;
 
-  constructor(name = "satz-und-strecke") {
+  constructor(name = "tracker") {
     super(name);
     this.version(1).stores(SCHEMA_V1);
     this.version(2).stores({ runPlans: "++id, order", planDays: "date" });
@@ -88,8 +93,16 @@ export const db = new AppDB();
 
 export async function getSettings(database: AppDB = db): Promise<Settings> {
   const s = { ...DEFAULT_SETTINGS, ...((await database.settings.get("profile")) ?? {}) };
-  if (!Array.isArray(s.weekTemplate) || s.weekTemplate.length !== 7) s.weekTemplate = DEFAULT_SETTINGS.weekTemplate;
+  // Eigene Arrays, damit niemand versehentlich die Standardwerte verändert
+  s.weekTemplate = Array.isArray(s.weekTemplate) && s.weekTemplate.length === 7 && s.weekTemplate.every(Array.isArray)
+    ? s.weekTemplate.map((d) => [...d])
+    : DEFAULT_SETTINGS.weekTemplate.map(() => []);
   if (s.shiftMode !== "fixedWeek") s.shiftMode = "continuous";
+  if (typeof s.birthYear !== "number") s.birthYear = null;
+  s.name = typeof s.name === "string" && s.name.trim() ? s.name.trim() : null;
+  if (typeof s.birthDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s.birthDate)) s.birthDate = null;
+  s.setupSeen = s.setupSeen === true;
+  s.weekCardHidden = s.weekCardHidden === true;
   return s;
 }
 

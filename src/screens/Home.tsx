@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, getSettings } from "../db/db";
 import { startWorkout } from "../db/repo";
 import { Marker } from "../components/plan/Marker";
+import { WeekSetupCard } from "../components/setup/WeekSetupCard";
 import { TodayPlan } from "../components/plan/TodayPlan";
 import { Button, Card, Empty, Section } from "../components/ui";
 import { fmt, isoDate, localDay, parseDay, weekDays } from "../lib/format";
@@ -44,7 +45,10 @@ export function Home() {
 
   return (
     <div>
-      <p className="mt-6 text-sm text-soft">{new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}</p>
+      <p className="mt-6 text-sm text-soft">
+        {settings.name && <><span className="font-medium text-ink">Hallo, {settings.name}</span> · </>}
+        {parseDay(today).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}
+      </p>
       <h1 className="text-2xl font-semibold tracking-tight">Diese Woche</h1>
 
       <Card className="mt-4 p-2">
@@ -89,19 +93,21 @@ export function Home() {
       ) : planActive ? (
         <TodayPlan today={today} />
       ) : (
-        <Section title="Training starten">
-          <div className="grid gap-2">
-            {routines.map((r) => (
-              <Button key={r.id} variant="plate" className="justify-between! text-base" onClick={() => begin(r.id!)}>{r.name}<span aria-hidden className="opacity-80">›</span></Button>
-            ))}
-            <div className="grid grid-cols-2 gap-2">
-              <Button onClick={() => begin(null)}>Freies Training</Button>
-              <Button onClick={() => navigate("run")}>Lauf eintragen</Button>
+        <>
+          {!settings.weekCardHidden && <WeekSetupCard />}
+          <Section title="Training starten">
+            <div className="grid gap-2">
+              {routines.map((r) => (
+                <Button key={r.id} variant="plate" className="justify-between! text-base" onClick={() => begin(r.id!)}>{r.name}<span aria-hidden className="opacity-80">›</span></Button>
+              ))}
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={() => begin(null)}>Freies Training</Button>
+                <Button onClick={() => navigate("run")}>Lauf eintragen</Button>
+              </div>
+              {!routines.length && <p className="text-sm text-soft">Leg unter „Pläne“ dein erstes Trainingsprogramm an, dann startest du es hier mit einem Tipp und bekommst Gewichtsvorschläge.</p>}
             </div>
-            {!routines.length && <p className="text-sm text-soft">Leg unter „Pläne“ dein erstes Trainingsprogramm an, dann startest du es hier mit einem Tipp und bekommst Gewichtsvorschläge.</p>}
-          </div>
-          <p className="mt-2 text-sm text-soft">Tipp: Unter „Pläne“ legst du deine Musterwoche an, dann schlägt dir die App jeden Tag das passende Training vor.</p>
-        </Section>
+          </Section>
+        </>
       )}
 
       <Section title="Zuletzt" action={<button type="button" className="text-sm font-semibold text-plate-ink" onClick={() => navigate("history")}>Alle</button>}>
