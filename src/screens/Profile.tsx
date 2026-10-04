@@ -6,6 +6,8 @@ import { clearPlanUndo, ensureHorizon } from "../db/schedule";
 import type { Settings } from "../db/types";
 import { Button, Card, Field, Header, NumberInput, Section, Select, toast } from "../components/ui";
 import { LineChart } from "../components/LineChart";
+import { ageFromBirthYear, birthYearFromAge } from "../lib/profile";
+import { navigate } from "../lib/router";
 import { ACCENTS, THEMES } from "../lib/appearance";
 import { fmt, isoDate, niceDate, num } from "../lib/format";
 import { BufferedNumber } from "./Routines";
@@ -13,6 +15,7 @@ import { BufferedNumber } from "./Routines";
 export function Profile() {
   const settings = useLiveQuery(() => getSettings(), []);
   const weights = useLiveQuery(() => db.bodyweight.orderBy("recordedAt").toArray(), []);
+  const running = useLiveQuery(async () => !!(await db.drafts.get("current")), []);
   const [w, setW] = useState("");
   const [persisted, setPersisted] = useState<boolean | null>(null);
   useEffect(() => { navigator.storage?.persisted?.().then(setPersisted).catch(() => setPersisted(null)); }, []);
@@ -64,6 +67,14 @@ export function Profile() {
             </div>
           </div>
         </Card>
+      </Section>
+
+      <Section title="Einrichtung">
+        <Card className="flex items-center gap-3 p-4">
+          <p className="flex-1 text-sm text-soft">Größe, Trainingsregeln und Woche Schritt für Schritt einstellen.</p>
+          <Button disabled={!!running} onClick={() => navigate("setup")}>Starten</Button>
+        </Card>
+        {running && <p className="mt-1.5 text-xs text-soft">Geht, sobald das laufende Training beendet ist.</p>}
       </Section>
 
       <Section title="Körpergewicht">
@@ -129,6 +140,14 @@ export function Profile() {
             <span className="w-28 shrink-0 text-sm">Körpergröße</span>
             <BufferedNumber ariaLabel="Körpergröße in cm" value={settings.heightCm} onCommit={(v) => save({ heightCm: v })} />
             <span className="text-sm text-soft">cm</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-28 shrink-0 text-sm">Alter</span>
+            <BufferedNumber ariaLabel="Alter in Jahren" decimal={false} value={ageFromBirthYear(settings.birthYear)} onCommit={(v) => {
+              if (v !== null && (v < 10 || v > 100)) { toast("Trag ein Alter zwischen 10 und 100 ein."); return; }
+              save({ birthYear: v === null ? null : birthYearFromAge(v) });
+            }} />
+            <span className="text-sm text-soft">Jahre</span>
           </div>
         </Card>
       </Section>
