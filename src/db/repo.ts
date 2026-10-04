@@ -141,7 +141,7 @@ export async function exerciseInUse(id: number, database: AppDB = db): Promise<b
 }
 
 /* ---------- Sicherung ---------- */
-const BACKUP_TABLES = ["settings", "exercises", "routines", "routineExercises", "setTemplates", "sessions", "loggedExercises", "loggedSets", "bodyweight", "runs"] as const;
+const BACKUP_TABLES = ["settings", "exercises", "routines", "routineExercises", "setTemplates", "sessions", "loggedExercises", "loggedSets", "bodyweight", "runs", "runPlans", "planDays"] as const;
 
 export async function exportBackup(database: AppDB = db): Promise<string> {
   const data: Record<string, unknown[]> = {};
