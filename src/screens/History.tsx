@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { db } from "../db/db";
 import { deleteSession } from "../db/repo";
 import { Button, Card, Empty, Header, toast } from "../components/ui";
-import { clock, fmt, localDay, monthLabel, niceDate, pace } from "../lib/format";
+import { clock, fmt, isoDate, localDay, monthLabel, niceDate, pace } from "../lib/format";
 import { navigate } from "../lib/router";
 
 type Item =
@@ -43,7 +43,7 @@ async function loadItems(limit?: number): Promise<Item[]> {
       kind: "run", id: r.id!, day: r.date, ts: r.date + "T12:00:00", title: `Lauf, ${fmt(r.km, 2)} km`,
       meta: `${niceDate(r.date)}, ${clock(r.seconds)}, ${pace(r.seconds, r.km)} min/km`, detail: r.note ?? "",
     })),
-    ...planDays.flatMap((d) => d.items.filter((i) => i.status === "skipped").map((i): Item => ({
+    ...planDays.filter((d) => d.date <= isoDate()).flatMap((d) => d.items.filter((i) => i.status === "skipped").map((i): Item => ({
       kind: "skipped", id: i.id, day: d.date, ts: d.date + "T00:00:00", title: i.label, meta: `${niceDate(d.date)}, ausgelassen`, detail: "",
     }))),
   ].sort((a, b) => b.day.localeCompare(a.day) || b.ts.localeCompare(a.ts));

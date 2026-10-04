@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
 import { db, DEFAULT_SETTINGS, getSettings, requestPersistence } from "../db/db";
 import { exportBackup, importBackup } from "../db/repo";
+import { clearPlanUndo, ensureHorizon } from "../db/schedule";
 import type { Settings } from "../db/types";
 import { Button, Card, Field, Header, NumberInput, Section, Select, toast } from "../components/ui";
 import { LineChart } from "../components/LineChart";
@@ -156,7 +157,7 @@ function Backup({ persisted, onPersist }: { persisted: boolean | null; onPersist
   const upload = async (f?: File) => {
     if (!f) return;
     if (!confirm("Die Sicherung ersetzt alle Daten auf diesem Gerät. Fortfahren?")) return;
-    try { await importBackup(await f.text()); toast("Sicherung eingespielt"); }
+    try { await importBackup(await f.text()); clearPlanUndo(); await ensureHorizon(); toast("Sicherung eingespielt"); }
     catch (e) { toast((e as Error).message || "Die Datei konnte nicht gelesen werden."); }
   };
   const wipe = async () => {

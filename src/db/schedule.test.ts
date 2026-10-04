@@ -92,7 +92,7 @@ describe("Plan-Speicher", () => {
     const { z2 } = await withWeek(db);
     const ref: TrainingRef = { kind: "runPlan", id: z2 };
     expect(await refInUse(ref, isoDate(), db)).toBe(true);
-    await deleteRunPlan(z2, isoDate(), db);
+    await deleteRunPlan(z2, db);
     expect(await refInUse(ref, isoDate(), db)).toBe(false);
     expect((await getSettings(db)).weekTemplate[0].map((r) => r.kind)).toEqual(["routine"]);
     expect(await findItem((await db.planDays.get(isoDate()))!.items[0].id, db)).toBeTruthy();
@@ -159,5 +159,14 @@ describe("Termine erledigen", () => {
     expect((await getSettings(db)).weekTemplate[0].map((r) => r.kind)).toEqual(["runPlan"]);
     expect((await db.planDays.get(tomorrow))!.items.map((i) => i.label)).toEqual(["Zone 2"]);
     expect((await findItem(itemId, db))!.item).toMatchObject({ status: "done", label: "Push" });
+  });
+
+  it("Kraftplan löschen entfernt auch offene Termine von gestern", async () => {
+    const db = await freshDb();
+    const { push } = await withWeek(db);
+    const yesterday = addDays(isoDate(), -1);
+    await db.planDays.put({ date: yesterday, seq: null, items: [{ id: "old", ref: { kind: "routine", id: push }, label: "Push", status: "planned" }] });
+    await deleteRoutine(push, db);
+    expect((await db.planDays.get(yesterday))!.items).toEqual([]);
   });
 });

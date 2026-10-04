@@ -33,7 +33,7 @@ export function TodayPlan({ today }: { today: string }) {
       <Section title="Heute">
         {open.length
           ? <div className="grid gap-2">{open.map((i) => <TodayCard key={i.id} item={i} names={names} />)}</div>
-          : <Empty>{todayDay?.items.length ? "Alles erledigt für heute. Stark!" : "Heute ist Ruhetag. Erhol dich gut."}</Empty>}
+          : <Empty>{emptyText(todayDay)}</Empty>}
         <div className={`mt-2 grid gap-2 ${open.length ? "grid-cols-3" : "grid-cols-2"}`}>
           {open.length > 0 && <Button className="px-2" onClick={() => setSheet("pause")}>Heute Pause</Button>}
           <Button className="px-2" onClick={() => setSheet("other")}>Was anderes</Button>
@@ -62,6 +62,12 @@ export function TodayPlan({ today }: { today: string }) {
       <OtherSheet open={sheet === "other"} onClose={() => setSheet(null)} today={today} days={days} names={names} />
     </>
   );
+}
+
+function emptyText(day?: PlanDay) {
+  if (day?.items.some((i) => i.status === "done")) return "Alles erledigt für heute. Stark!";
+  if (day?.items.length) return "Heute ausgelassen. Morgen geht's weiter.";
+  return "Heute ist Ruhetag. Erhol dich gut.";
 }
 
 function TodayCard({ item, names }: { item: PlanItem; names: PlanNames }) {
@@ -97,8 +103,13 @@ function PauseSheet({ open, onClose, today, days, names }: SheetProps) {
   const ctx = useLiveQuery(() => planCtx(), []);
   const names0 = openItems(days.find((d) => d.date === today)).map((i) => itemName(names, i)).join(" + ");
   const preview = ctx ? (how === "shift" ? postponeFrom(days, today, today, ctx) : skipDay(days, today)) : days;
+  const [busy, setBusy] = useState(false);
   const confirm = async () => {
-    if (await planAction((d, c) => (how === "shift" ? postponeFrom(d, today, today, c) : skipDay(d, today)), how === "shift" ? "Trainings verschoben" : "Training ausgelassen")) onClose();
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (await planAction((d, c) => (how === "shift" ? postponeFrom(d, today, today, c) : skipDay(d, today)), how === "shift" ? "Trainings verschoben" : "Training ausgelassen")) onClose();
+    } finally { setBusy(false); }
   };
   const choice = (k: "shift" | "skip", title: string, text: string) => (
     <button type="button" role="radio" aria-checked={how === k} onClick={() => setHow(k)}
@@ -116,7 +127,7 @@ function PauseSheet({ open, onClose, today, days, names }: SheetProps) {
       </div>
       <p className="mt-4 mb-1.5 text-xs font-medium text-soft">So sieht die Woche danach aus</p>
       <WeekPreview before={days} after={preview} from={today} names={names} />
-      <Button variant="plate" className="mt-4 w-full" onClick={confirm}>Pause eintragen</Button>
+      <Button variant="plate" className="mt-4 w-full" disabled={busy} onClick={confirm}>Pause eintragen</Button>
     </Sheet>
   );
 }
@@ -126,9 +137,13 @@ function OtherSheet({ open, onClose, today, days, names }: SheetProps) {
   const [shift, setShift] = useState(false);
   const options = days.filter((d) => d.date > today && openItems(d).length).slice(0, 10);
   const close = () => { setTarget(null); setShift(false); onClose(); };
+  const [busy, setBusy] = useState(false);
   const confirm = async () => {
-    if (!target) return;
-    if (await planAction((d) => (shift ? pullForward(d, today, target) : swapDays(d, today, target)), shift ? "Vorgezogen, der Rest rückt nach" : "Getauscht")) close();
+    if (!target || busy) return;
+    setBusy(true);
+    try {
+      if (await planAction((d) => (shift ? pullForward(d, today, target) : swapDays(d, today, target)), shift ? "Vorgezogen, der Rest rückt nach" : "Getauscht")) close();
+    } finally { setBusy(false); }
   };
   const free = async () => {
     if (!(await db.drafts.get("current"))) await startWorkout(null, db, { planItemId: null });
@@ -156,7 +171,7 @@ function OtherSheet({ open, onClose, today, days, names }: SheetProps) {
         <span>Statt tauschen: alles dazwischen rückt einen Tag nach</span>
         <input type="checkbox" checked={shift} onChange={(e) => setShift(e.target.checked)} className="h-5 w-5 accent-[var(--plate)]" />
       </label>
-      <Button variant="plate" className="mt-2 w-full" disabled={!target} onClick={confirm}>Heute machen</Button>
+      <Button variant="plate" className="mt-2 w-full" disabled={!target || busy} onClick={confirm}>Heute machen</Button>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <Button onClick={free}>Freies Training</Button>
         <Button onClick={() => { close(); navigate("run"); }}>Lauf ohne Plan</Button>

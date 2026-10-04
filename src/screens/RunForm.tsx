@@ -4,7 +4,7 @@ import { db } from "../db/db";
 import { deleteRun, saveRun } from "../db/repo";
 import { findItem } from "../db/schedule";
 import { Button, Card, Field, Header, Input, NumberInput, toast } from "../components/ui";
-import { fmtInput, fmtPace, isoDate, num, pace } from "../lib/format";
+import { fmtInput, fmtPace, isoDate, niceDate, num, pace } from "../lib/format";
 import { back, navigate } from "../lib/router";
 import { checkRun, describeTarget } from "../lib/runTarget";
 
@@ -60,7 +60,7 @@ export function RunForm({ id, itemId }: { id?: number; itemId?: string }) {
       <Header title={title} onBack />
       {plan && (
         <Card className="mb-4 p-3">
-          <span className="block text-xs font-medium text-soft">{id ? "Geplant war" : "Heute geplant"}</span>
+          <span className="block text-xs font-medium text-soft">{id ? "Geplant war" : !planned?.date || planned.date === isoDate() ? "Heute geplant" : `Geplant am ${niceDate(planned.date)}`}</span>
           <span className="mt-0.5 block text-lg font-semibold tracking-tight">{describeTarget(plan)}</span>
         </Card>
       )}

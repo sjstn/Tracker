@@ -56,6 +56,8 @@ export async function changePlan(fn: (days: PlanDay[], ctx: PlanCtx) => PlanDay[
   });
 }
 
+export function clearPlanUndo() { undoSnapshot = null; }
+
 export async function undoPlanChange(database: AppDB = db): Promise<boolean> {
   if (!undoSnapshot) return false;
   const snap = undoSnapshot;
@@ -94,17 +96,17 @@ export async function refInUse(ref: TrainingRef, today = isoDate(), database: Ap
     .some((d) => d.items.some((i) => i.status === "planned" && sameRef(i.ref, ref)));
 }
 
-/** Nur innerhalb einer Transaktion über settings + planDays aufrufen. */
-export async function removeRefEverywhere(ref: TrainingRef, today: string, database: AppDB) {
+/** Entfernt offene Termine an allen Tagen, auch vergangene. Nur innerhalb einer Transaktion über settings + planDays aufrufen. */
+export async function removeRefEverywhere(ref: TrainingRef, database: AppDB) {
   const s = await getSettings(database);
   await database.settings.put({ ...s, weekTemplate: s.weekTemplate.map((d) => d.filter((r) => !sameRef(r, ref))) });
-  await database.planDays.bulkPut(removeRef(await database.planDays.toArray(), ref, today));
+  await database.planDays.bulkPut(removeRef(await database.planDays.toArray(), ref, ""));
   undoSnapshot = null;
 }
 
-export async function deleteRunPlan(id: number, today = isoDate(), database: AppDB = db) {
+export async function deleteRunPlan(id: number, database: AppDB = db) {
   await database.transaction("rw", [database.runPlans, database.settings, database.planDays], async () => {
-    await removeRefEverywhere({ kind: "runPlan", id }, today, database);
+    await removeRefEverywhere({ kind: "runPlan", id }, database);
     await database.runPlans.delete(id);
   });
 }

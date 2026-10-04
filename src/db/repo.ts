@@ -142,7 +142,7 @@ export async function deleteRoutine(id: number, database: AppDB = db) {
     const res = await database.routineExercises.where("routineId").equals(id).primaryKeys();
     await database.setTemplates.where("routineExerciseId").anyOf(res as number[]).delete();
     await database.routineExercises.bulkDelete(res);
-    await removeRefEverywhere({ kind: "routine", id }, isoDate(), database);
+    await removeRefEverywhere({ kind: "routine", id }, database);
     await database.routines.delete(id);
     // Vergangene Trainings bleiben erhalten (routineId → null, Name bleibt gespeichert)
     await database.sessions.where("routineId").equals(id).modify({ routineId: null });

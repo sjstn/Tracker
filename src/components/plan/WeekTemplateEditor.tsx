@@ -3,7 +3,7 @@ import { useState } from "react";
 import { getSettings } from "../../db/db";
 import { saveWeekSetup } from "../../db/schedule";
 import type { ShiftMode, TrainingRef } from "../../db/types";
-import { Card, Section, Sheet } from "../ui";
+import { Card, Section, Sheet, toast } from "../ui";
 import { Marker } from "./Marker";
 import { usePlanNames, WEEKDAYS, WEEKDAYS_LONG } from "./names";
 
@@ -19,7 +19,8 @@ export function WeekTemplateEditor() {
   if (!settings || !names) return null;
   const tpl = settings.weekTemplate;
 
-  const save = (weekTemplate: TrainingRef[][]) => saveWeekSetup({ weekTemplate });
+  const persist = (patch: Parameters<typeof saveWeekSetup>[0]) => { saveWeekSetup(patch).catch(() => toast("Konnte nicht gespeichert werden.")); };
+  const save = (weekTemplate: TrainingRef[][]) => persist({ weekTemplate });
   const add = (ref: TrainingRef) => {
     const next = tpl.map((d) => [...d]);
     next[addTo!].push(ref);
@@ -58,7 +59,7 @@ export function WeekTemplateEditor() {
         <span id="shift-label" className="text-sm font-medium">Beim Verschieben</span>
         <div className="grid grid-cols-2 gap-0.5 rounded-lg bg-surface-2 p-0.5 text-xs font-medium" role="radiogroup" aria-labelledby="shift-label">
           {MODES.map(([k, l]) => (
-            <button key={k} type="button" role="radio" aria-checked={settings.shiftMode === k} onClick={() => saveWeekSetup({ shiftMode: k })}
+            <button key={k} type="button" role="radio" aria-checked={settings.shiftMode === k} onClick={() => persist({ shiftMode: k })}
               className={`min-h-9 rounded-md px-2.5 ${settings.shiftMode === k ? "bg-surface shadow-sm" : "text-soft"}`}>{l}</button>
           ))}
         </div>

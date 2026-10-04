@@ -88,8 +88,13 @@ function ItemChip({ item, names, picked, onPick }: { item: PlanItem; names: Plan
   return (
     <span ref={setNodeRef} style={style}
       className={`relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${isDragging ? "z-10 bg-surface shadow-lg ring-1 ring-plate/40" : picked === item.id ? "bg-tint ring-1 ring-plate" : "bg-surface-2"} ${movable ? "" : "opacity-60"}`}>
-      <button type="button" disabled={!movable} aria-pressed={picked === item.id}
-        onClick={(e) => { e.stopPropagation(); onPick(picked === item.id ? null : item.id); }}
+      <button type="button" aria-disabled={!movable} aria-pressed={picked === item.id}
+        onClick={(e) => {
+          // Ist schon etwas gewählt, gilt der Tipp dem Tag (Tauschen/Dazulegen), nicht dem Chip
+          if (picked && picked !== item.id) return;
+          e.stopPropagation();
+          if (movable) onPick(picked === item.id ? null : item.id);
+        }}
         className="flex min-h-8 flex-1 items-center gap-2 text-left">
         <Marker kind={item.ref.kind} status={item.status} />
         <span className="font-medium">{name}</span>
