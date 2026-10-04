@@ -105,7 +105,7 @@ export function Workout() {
 
   return (
     <div className="flex flex-1 flex-col"
-      style={draft.restEndsAt ? undefined : { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
+      style={draft.restEndsAt ? undefined : { paddingBottom: "calc(var(--safe-bottom) + 1rem)" }}>
       <Header title={draft.routineName ?? "Freies Training"} onBack={() => navigate("home")}
         action={<Elapsed since={draft.startedAt} />} />
       {draft.performedOn && <p className="-mt-1 mb-3 text-sm text-soft">Nachtrag für {niceDate(draft.performedOn)}</p>}
@@ -209,7 +209,7 @@ function RestTimer({ endsAt, onChange }: { endsAt: number; onChange: (t: number 
   const done = left <= 0;
   return (
     <div className="sticky bottom-0 z-30 -mx-4 mt-auto border-t border-line bg-surface/95 px-4 pt-3 shadow-[0_-4px_12px_rgb(0_0_0/0.04)] backdrop-blur"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }} role="timer" aria-live="off">
+      style={{ paddingBottom: "calc(var(--safe-bottom) + 0.75rem)" }} role="timer" aria-live="off">
       <div className="mx-auto flex max-w-xl items-center gap-3">
         <div className="flex-1">
           <span className="block text-xs text-soft">{done ? "Pause vorbei" : "Pause"}</span>

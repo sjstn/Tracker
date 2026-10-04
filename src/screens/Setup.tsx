@@ -155,7 +155,7 @@ export function Setup({ startAt }: { startAt?: string }) {
         {step === "runs" && <StepRuns names={runNames} value={draft.runTargets} onChange={(runTargets) => setDraft({ ...draft, runTargets })} errors={tried ? runErrors : {}} />}
         {step === "done" && <StepDone week={draft.week} name={draft.name} />}
       </div>
-      <div className="sticky bottom-0 grid gap-1 bg-bg pt-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}>
+      <div className="sticky bottom-0 grid gap-1 bg-bg pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 0.75rem)" }}>
         <Button variant="plate" disabled={busy} onClick={next}>{labels[step]}</Button>
         {step === "welcome" && <button type="button" onClick={later} className="min-h-11 text-sm font-semibold text-soft">Später</button>}
         {canSkip && <button type="button" disabled={busy} onClick={skip} className="min-h-11 text-sm font-semibold text-soft">Überspringen</button>}

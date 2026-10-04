@@ -44,7 +44,7 @@ export function Tour({ from }: { from?: string }) {
             className={`h-2 rounded-full transition-all ${k === i ? "w-5 bg-plate" : "w-2 bg-line"}`} />
         ))}
       </div>
-      <div className="grid grid-cols-[auto_1fr] gap-2" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}>
+      <div className="grid grid-cols-[auto_1fr] gap-2" style={{ paddingBottom: "calc(var(--safe-bottom) + 0.75rem)" }}>
         <Button disabled={i === 0} onClick={() => go(i - 1)} aria-label="Zurück">‹</Button>
         <Button variant="plate" onClick={last ? finish : () => go(i + 1)}>{last ? "Los geht's" : "Weiter"}</Button>
       </div>
