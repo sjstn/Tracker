@@ -67,7 +67,11 @@ export async function completeSetup(draft: SetupDraft, today = isoDate(), databa
 
     const routineIds = new Map((await database.routines.toArray()).map((r) => [nameKey(r.name), r.id!] as [string, number]));
     const runPlanIds = new Map((await database.runPlans.toArray()).map((r) => [nameKey(r.name), r.id!] as [string, number]));
-    await saveWeekSetup({ weekTemplate: toTemplate(draft.week, routineIds, runPlanIds), shiftMode: draft.shiftMode }, today, database);
+    const weekTemplate = toTemplate(draft.week, routineIds, runPlanIds);
+    // Unveränderte Woche: Plan-Tage (auch manuell verschobene) nicht neu aufbauen
+    if (JSON.stringify(weekTemplate) !== JSON.stringify(s.weekTemplate) || draft.shiftMode !== s.shiftMode) {
+      await saveWeekSetup({ weekTemplate, shiftMode: draft.shiftMode }, today, database);
+    }
   });
 }
 
@@ -75,7 +79,7 @@ export async function completeSetup(draft: SetupDraft, today = isoDate(), databa
 export async function isAppEmpty(database: AppDB = db): Promise<boolean> {
   const counts = await Promise.all([
     database.sessions.count(), database.runs.count(), database.routines.count(),
-    database.runPlans.count(), database.bodyweight.count(), database.planDays.count(),
+    database.runPlans.count(), database.bodyweight.count(), database.planDays.count(), database.drafts.count(),
   ]);
   if (counts.some((c) => c > 0)) return false;
   return !(await getSettings(database)).weekTemplate.some((d) => d.length > 0);

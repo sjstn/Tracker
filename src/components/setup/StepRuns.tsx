@@ -24,7 +24,7 @@ export function StepRuns({ names, value, onChange, errors }: {
                 <span className="flex-1 font-semibold">{name}</span>
                 <div className="grid grid-cols-2 gap-0.5 rounded-lg bg-surface-2 p-0.5 text-xs font-medium" role="radiogroup" aria-label={`Ziel für ${name}`}>
                   {([["duration", "Dauer"], ["distance", "Distanz"]] as const).map(([k, l]) => (
-                    <button key={k} type="button" role="radio" aria-checked={f.targetKind === k} onClick={() => set(key, name, { targetKind: k })}
+                    <button key={k} type="button" role="radio" aria-checked={f.targetKind === k} onClick={() => f.targetKind !== k && set(key, name, { targetKind: k, target: k === "duration" ? "45" : "10" })}
                       className={`min-h-8 rounded-md px-2 ${f.targetKind === k ? "bg-surface shadow-sm" : "text-soft"}`}>{l}</button>
                   ))}
                 </div>

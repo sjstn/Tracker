@@ -9,7 +9,7 @@ import { StepRules } from "../components/setup/StepRules";
 import { StepRuns } from "../components/setup/StepRuns";
 import { StepWeek } from "../components/setup/StepWeek";
 import { fmtInput } from "../lib/format";
-import { defaultRunForm, nameKey, PRESETS, runPlanNames, uniqueNames } from "../lib/presets";
+import { defaultRunForm, nameKey, type DraftRef, PRESETS, runPlanNames, uniqueNames } from "../lib/presets";
 import { validateAbout, type AboutForm } from "../lib/profile";
 import { back, navigate } from "../lib/router";
 import { validateRunPlan } from "../lib/runTarget";
@@ -26,6 +26,7 @@ export function Setup({ startAt }: { startAt?: string }) {
   const [about, setAbout] = useState<AboutForm>({ height: "", age: "", weight: "" });
   const [preset, setPreset] = useState("hybrid");
   const [step, setStep] = useState<Step>(startAt === "week" ? "preset" : "welcome");
+  const [presetWeek, setPresetWeek] = useState<DraftRef[][]>([]); // Woche aus dem Preset-Schritt, für „Überspringen“
   const [trail, setTrail] = useState<Step[]>([]);
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -81,7 +82,9 @@ export function Setup({ startAt }: { startAt?: string }) {
     } else if (step === "rules") go("preset");
     else if (step === "preset") {
       const p = PRESETS.find((x) => x.id === preset);
-      setDraft(withRunTargets({ ...draft, week: (p ? p.week : start.draft.week).map((d) => [...d]) }));
+      const week = (p ? p.week : start.draft.week).map((d) => [...d]);
+      setPresetWeek(week);
+      setDraft(withRunTargets({ ...draft, week }));
       go("week");
     } else if (step === "week") await afterWeek(draft);
     else if (step === "runs") {
@@ -97,7 +100,7 @@ export function Setup({ startAt }: { startAt?: string }) {
       setDraft({ ...draft, heightCm: start.draft.heightCm, age: start.draft.age, weightKg: null });
       go("rules");
     } else if (step === "rules") { setDraft({ ...draft, progression: start.draft.progression }); go("preset"); }
-    else if (step === "week") await afterWeek(draft);
+    else if (step === "week") await afterWeek({ ...draft, week: presetWeek.map((d) => [...d]), shiftMode: start.draft.shiftMode });
     else if (step === "runs") await finish(withRunTargets({ ...draft, runTargets: start.draft.runTargets }));
   };
   const later = async () => {

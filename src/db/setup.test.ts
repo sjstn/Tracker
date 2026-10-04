@@ -21,6 +21,22 @@ describe("Assistent speichern", () => {
     expect(await isAppEmpty(db)).toBe(false);
   });
 
+  it("isAppEmpty ist false bei laufendem Training", async () => {
+    const db = await freshDb();
+    await db.drafts.put({ key: "current", startedAt: new Date().toISOString(), routineId: null, routineName: null, notes: "", exercises: [], restEndsAt: null });
+    expect(await isAppEmpty(db)).toBe(false);
+  });
+
+  it("erneutes Ausführen mit unveränderter Woche lässt verschobene Plan-Tage unberührt", async () => {
+    const db = await freshDb();
+    const draft = await draftFor(db, { week: hybrid });
+    await completeSetup(draft, isoDate(), db);
+    const tomorrow = addDays(isoDate(), 1);
+    await db.planDays.update(tomorrow, { items: [] });
+    await completeSetup(draft, isoDate(), db);
+    expect((await db.planDays.get(tomorrow))!.items).toEqual([]);
+  });
+
   it("legt Einstellungen, Gewicht, Pläne, Laufarten und 14 Plan-Tage an", async () => {
     const db = await freshDb();
     await completeSetup(await draftFor(db, { heightCm: 182, age: 35, weightKg: 82.4, week: hybrid }), isoDate(), db);
