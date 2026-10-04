@@ -1,7 +1,7 @@
 process.env.TZ = "Europe/Berlin";
 import { describe, expect, it } from "vitest";
 import type { PlanDay, ShiftMode, TrainingRef } from "../db/types";
-import { generate, overdue, rebuildFrom, skipDay, skipOverdue, type PlanCtx } from "./schedule";
+import { generate, overdue, postponeFrom, postponeOverdue, rebuildFrom, skipDay, skipOverdue, type PlanCtx } from "./schedule";
 
 const R = (id: number): TrainingRef => ({ kind: "routine", id });
 const L = (id: number): TrainingRef => ({ kind: "runPlan", id });
@@ -86,5 +86,71 @@ describe("rebuildFrom", () => {
     const rebuilt = rebuildFrom(days, "2026-10-07", ctx("continuous", pullOnTuesday));
     expect(view(rebuilt, "2026-10-06", "2026-10-07")).toEqual(["06 Push✓", "07 Longrun"]);
     expect(view(rebuilt, "2026-10-13", "2026-10-13")).toEqual(["13 Pull"]);
+  });
+});
+
+describe("postponeFrom – Fortlaufend", () => {
+  it("Pause am Dienstag schiebt alles einen Tag, auch den Ruhetag", () => {
+    const days = postponeFrom(twoWeeks(), "2026-10-06", "2026-10-06", ctx());
+    expect(view(days, MON, "2026-10-12")).toEqual([
+      "05 Zone 2", "06 –", "07 Push", "08 Longrun", "09 Pull+Z2 kurz", "10 –", "11 Intervall", "12 Beine",
+    ]);
+    expect(days.find((d) => d.date === "2026-10-06")!.seq).toBeNull();
+  });
+
+  it("hängt den Überlauf hinten an und setzt die Reihenfolge danach fort", () => {
+    const c = ctx();
+    const days = postponeFrom(twoWeeks(c), "2026-10-06", "2026-10-06", c);
+    expect(view(days, "2026-10-19", "2026-10-19")).toEqual(["19 Beine"]);
+    expect(view(generate(days, "2026-10-20", "2026-10-20", c), "2026-10-20", "2026-10-20")).toEqual(["20 Zone 2"]);
+  });
+
+  it("lässt erledigte Trainings des Tages stehen", () => {
+    const days = postponeFrom(markDone(twoWeeks(), "2026-10-08", "Pull"), "2026-10-08", "2026-10-08", ctx());
+    expect(view(days, "2026-10-08", "2026-10-11")).toEqual(["08 Pull✓", "09 Z2 kurz", "10 –", "11 Intervall"]);
+  });
+});
+
+describe("postponeFrom – Feste Woche", () => {
+  it("der nächste Ruhetag fängt die Verschiebung auf", () => {
+    const c = ctx("fixedWeek");
+    const days = postponeFrom(twoWeeks(c), "2026-10-06", "2026-10-06", c);
+    expect(view(days, "2026-10-06", "2026-10-12")).toEqual([
+      "06 –", "07 Push", "08 Longrun", "09 Pull+Z2 kurz", "10 Intervall", "11 Beine", "12 Zone 2",
+    ]);
+  });
+
+  it("was über Sonntag hinausfällt, wird am alten Tag ausgelassen", () => {
+    const c = ctx("fixedWeek");
+    const days = postponeFrom(twoWeeks(c), "2026-10-10", "2026-10-10", c);
+    expect(view(days, "2026-10-10", "2026-10-12")).toEqual(["10 –", "11 Intervall+Beine✗", "12 Zone 2"]);
+  });
+});
+
+describe("postponeOverdue", () => {
+  it("Fortlaufend: vergessene Tage landen in ihrer Reihenfolge ab heute", () => {
+    const days = postponeOverdue(markDone(twoWeeks(), MON, "Zone 2"), "2026-10-08", ctx());
+    expect(view(days, "2026-10-06", "2026-10-11")).toEqual([
+      "06 –", "07 –", "08 Push", "09 Longrun", "10 Pull+Z2 kurz", "11 –",
+    ]);
+  });
+
+  it("Feste Woche: Vorwoche fällt weg, diese Woche rückt ab heute nach", () => {
+    const c = ctx("fixedWeek");
+    const days = postponeOverdue(twoWeeks(c), "2026-10-13", c);
+    expect(view(days, MON, MON)).toEqual(["05 Zone 2✗"]);
+    expect(view(days, "2026-10-11", "2026-10-16")).toEqual([
+      "11 Beine✗", "12 –", "13 Zone 2", "14 Push", "15 Longrun", "16 Pull+Z2 kurz",
+    ]);
+    expect(overdue(days, "2026-10-13")).toEqual([]);
+  });
+});
+
+describe("Moduswechsel", () => {
+  it("Feste Woche richtet verschobene Tage wieder am Wochentag aus", () => {
+    const shifted = postponeFrom(twoWeeks(), "2026-10-06", "2026-10-06", ctx()); // Fortlaufend: Mo 12. wäre Beine
+    expect(view(shifted, "2026-10-12", "2026-10-12")).toEqual(["12 Beine"]);
+    const fixed = rebuildFrom(shifted, "2026-10-12", ctx("fixedWeek"));
+    expect(view(fixed, "2026-10-12", "2026-10-13")).toEqual(["12 Zone 2", "13 Push"]);
   });
 });
