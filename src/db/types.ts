@@ -57,6 +57,12 @@ export interface Settings extends ProgressionFields {
   /** Musterwoche: 7 Einträge ab Montag, [] = Ruhetag */
   weekTemplate: TrainingRef[][];
   shiftMode: ShiftMode;
+  /** Aus dem Alter berechnet, damit es nicht veraltet */
+  birthYear: number | null;
+  /** Assistent wurde mit „Fertig" oder „Später" verlassen */
+  setupSeen: boolean;
+  /** Karte „Woche einrichten?" wurde weggeklickt */
+  weekCardHidden: boolean;
 }
 
 export interface Exercise {

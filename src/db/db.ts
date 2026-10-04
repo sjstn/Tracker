@@ -20,6 +20,9 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   weekTemplate: [[], [], [], [], [], [], []],
   shiftMode: "continuous",
+  birthYear: null,
+  setupSeen: false,
+  weekCardHidden: false,
 };
 
 export const MUSCLE_GROUPS = ["Brust", "Rücken", "Beine", "Schultern", "Arme", "Bauch"] as const;
@@ -88,8 +91,14 @@ export const db = new AppDB();
 
 export async function getSettings(database: AppDB = db): Promise<Settings> {
   const s = { ...DEFAULT_SETTINGS, ...((await database.settings.get("profile")) ?? {}) };
-  if (!Array.isArray(s.weekTemplate) || s.weekTemplate.length !== 7) s.weekTemplate = DEFAULT_SETTINGS.weekTemplate;
+  // Eigene Arrays, damit niemand versehentlich die Standardwerte verändert
+  s.weekTemplate = Array.isArray(s.weekTemplate) && s.weekTemplate.length === 7 && s.weekTemplate.every(Array.isArray)
+    ? s.weekTemplate.map((d) => [...d])
+    : DEFAULT_SETTINGS.weekTemplate.map(() => []);
   if (s.shiftMode !== "fixedWeek") s.shiftMode = "continuous";
+  if (typeof s.birthYear !== "number") s.birthYear = null;
+  s.setupSeen = s.setupSeen === true;
+  s.weekCardHidden = s.weekCardHidden === true;
   return s;
 }
 
