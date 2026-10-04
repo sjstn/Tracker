@@ -128,3 +128,47 @@ export function postponeOverdue(days: PlanDay[], today: string, ctx: PlanCtx): P
   }
   return out;
 }
+
+export function swapDays(days: PlanDay[], a: string, b: string): PlanDay[] {
+  const out = copy(days);
+  const map = index(out);
+  const A = map.get(a), B = map.get(b);
+  if (!A || !B || a === b) return out;
+  const oa = openItems(A), ob = openItems(B);
+  A.items = [...keptItems(A), ...ob];
+  B.items = [...keptItems(B), ...oa];
+  return out;
+}
+
+/** Offene Trainings von `target` kommen auf `today`, alles dazwischen rückt einen Tag weiter. */
+export function pullForward(days: PlanDay[], today: string, target: string): PlanDay[] {
+  const out = copy(days);
+  const map = index(out);
+  const dates: string[] = [];
+  for (let d = today; d <= target; d = addDays(d, 1)) dates.push(d);
+  const groups = dates.map((d) => openItems(map.get(d)));
+  dates.forEach((date, k) => {
+    const day = map.get(date);
+    if (day) day.items = [...keptItems(day), ...(k === 0 ? groups[groups.length - 1] : groups[k - 1])];
+  });
+  return out;
+}
+
+export function moveItem(days: PlanDay[], itemId: string, target: string, how: "add" | "swap", today: string): PlanDay[] {
+  const out = copy(days);
+  const src = out.find((d) => d.items.some((i) => i.id === itemId && isOpen(i)));
+  const dst = index(out).get(target);
+  if (!src || !dst || src.date === target || target < today || src.date < today) return copy(days);
+  const item = src.items.find((i) => i.id === itemId)!;
+  src.items = src.items.filter((i) => i.id !== itemId);
+  if (how === "swap") {
+    src.items.push(...openItems(dst));
+    dst.items = keptItems(dst);
+  }
+  dst.items.push(item);
+  return out;
+}
+
+export function removeRef(days: PlanDay[], ref: TrainingRef, from: string): PlanDay[] {
+  return copy(days).map((d) => (d.date < from ? d : { ...d, items: d.items.filter((i) => !(isOpen(i) && sameRef(i.ref, ref))) }));
+}

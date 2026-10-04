@@ -1,7 +1,7 @@
 process.env.TZ = "Europe/Berlin";
 import { describe, expect, it } from "vitest";
 import type { PlanDay, ShiftMode, TrainingRef } from "../db/types";
-import { generate, overdue, postponeFrom, postponeOverdue, rebuildFrom, skipDay, skipOverdue, type PlanCtx } from "./schedule";
+import { generate, moveItem, overdue, postponeFrom, postponeOverdue, pullForward, rebuildFrom, removeRef, skipDay, skipOverdue, swapDays, type PlanCtx } from "./schedule";
 
 const R = (id: number): TrainingRef => ({ kind: "routine", id });
 const L = (id: number): TrainingRef => ({ kind: "runPlan", id });
@@ -24,6 +24,8 @@ export const MON = "2026-10-05";
 export const twoWeeks = (c = ctx()) => generate([], MON, "2026-10-18", c);
 export const markDone = (days: PlanDay[], date: string, label: string) =>
   days.map((d) => d.date !== date ? d : { ...d, items: d.items.map((i) => i.label === label ? { ...i, status: "done" as const } : i) });
+
+const idOf = (days: PlanDay[], date: string, label: string) => days.find((d) => d.date === date)!.items.find((i) => i.label === label)!.id;
 
 describe("generate", () => {
   it("legt die Musterwoche ab Montag an", () => {
@@ -152,5 +154,47 @@ describe("Moduswechsel", () => {
     expect(view(shifted, "2026-10-12", "2026-10-12")).toEqual(["12 Beine"]);
     const fixed = rebuildFrom(shifted, "2026-10-12", ctx("fixedWeek"));
     expect(view(fixed, "2026-10-12", "2026-10-13")).toEqual(["12 Zone 2", "13 Push"]);
+  });
+});
+
+describe("Tauschen und Ziehen", () => {
+  it("swapDays tauscht die offenen Trainings zweier Tage", () => {
+    expect(view(swapDays(twoWeeks(), "2026-10-06", "2026-10-07"), "2026-10-06", "2026-10-07")).toEqual(["06 Longrun", "07 Push"]);
+  });
+
+  it("swapDays lässt erledigte Trainings am Tag", () => {
+    const days = swapDays(markDone(twoWeeks(), "2026-10-08", "Pull"), "2026-10-08", "2026-10-10");
+    expect(view(days, "2026-10-08", "2026-10-10")).toEqual(["08 Pull✓+Intervall", "09 –", "10 Z2 kurz"]);
+  });
+
+  it("pullForward holt ein Training auf heute und rückt den Rest nach", () => {
+    expect(view(pullForward(twoWeeks(), "2026-10-06", "2026-10-08"), "2026-10-06", "2026-10-09")).toEqual([
+      "06 Pull+Z2 kurz", "07 Push", "08 Longrun", "09 –",
+    ]);
+  });
+
+  it("moveItem verschiebt auf einen Ruhetag", () => {
+    const days = twoWeeks();
+    const out = moveItem(days, idOf(days, "2026-10-07", "Longrun"), "2026-10-09", "add", "2026-10-06");
+    expect(view(out, "2026-10-07", "2026-10-09")).toEqual(["07 –", "08 Pull+Z2 kurz", "09 Longrun"]);
+  });
+
+  it("moveItem legt dazu oder tauscht mit dem belegten Tag", () => {
+    const days = twoWeeks();
+    const id = idOf(days, "2026-10-07", "Longrun");
+    expect(view(moveItem(days, id, "2026-10-08", "add", "2026-10-06"), "2026-10-07", "2026-10-08")).toEqual(["07 –", "08 Pull+Z2 kurz+Longrun"]);
+    expect(view(moveItem(days, id, "2026-10-08", "swap", "2026-10-06"), "2026-10-07", "2026-10-08")).toEqual(["07 Pull+Z2 kurz", "08 Longrun"]);
+  });
+
+  it("moveItem ignoriert vergangene Zieltage und erledigte Items", () => {
+    const days = markDone(twoWeeks(), "2026-10-06", "Push");
+    expect(moveItem(days, idOf(days, "2026-10-07", "Longrun"), MON, "add", "2026-10-06")).toEqual(days);
+    expect(moveItem(days, idOf(days, "2026-10-06", "Push"), "2026-10-09", "add", "2026-10-06")).toEqual(days);
+  });
+
+  it("removeRef entfernt offene Termine ab dem Stichtag, Erledigtes bleibt", () => {
+    const days = removeRef(markDone(twoWeeks(), "2026-10-06", "Push"), { kind: "routine", id: 1 }, "2026-10-06");
+    expect(view(days, "2026-10-06", "2026-10-06")).toEqual(["06 Push✓"]);
+    expect(view(days, "2026-10-13", "2026-10-13")).toEqual(["13 –"]);
   });
 });
