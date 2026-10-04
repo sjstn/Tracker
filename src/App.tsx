@@ -1,5 +1,5 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { db, getSettings, requestPersistence } from "./db/db";
 import { applyAppearance } from "./lib/appearance";
 import { Toaster, toast } from "./components/ui";
@@ -15,6 +15,8 @@ import { RunForm } from "./screens/RunForm";
 import { RunPlanEdit } from "./screens/RunPlanEdit";
 import { Profile } from "./screens/Profile";
 import { Week } from "./screens/Week";
+import { isAppEmpty } from "./db/setup";
+import { Setup } from "./screens/Setup";
 
 const TABS = [
   ["home", "Start"], ["routines", "Pläne"], ["exercises", "Übungen"], ["history", "Verlauf"], ["profile", "Ich"],
@@ -34,6 +36,15 @@ export function App() {
   const today = useToday();
   useEffect(() => { ensureHorizon(today).catch(() => toast("Wochenplan konnte nicht geladen werden.")); }, [today]);
 
+  // Leere App: Assistent einmal automatisch öffnen
+  const setupChecked = useRef(false);
+  useEffect(() => {
+    if (!settings || setupChecked.current) return;
+    setupChecked.current = true;
+    if (settings.setupSeen || name === "setup") return;
+    isAppEmpty().then((empty) => { if (empty) navigate("setup", true); }).catch(() => {});
+  }, [settings, name]);
+
   let screen;
   switch (name) {
     case "workout": screen = <Workout />; break;
@@ -47,15 +58,16 @@ export function App() {
     case "run": screen = <RunForm id={id} itemId={params.item} key={id ?? params.item ?? "new"} />; break;
     case "profile": screen = <Profile />; break;
     case "week": screen = <Week />; break;
+    case "setup": screen = <Setup startAt={params.step} key={params.step ?? "all"} />; break;
     default: screen = <Home />;
   }
   const active = PARENT[name] ?? name;
-  const inWorkout = name === "workout";
+  const hideNav = name === "workout" || name === "setup";
 
   return (
     <>
-      <main className="mx-auto max-w-xl px-4 pb-28">{screen}</main>
-      {!inWorkout && (
+      <main className={`mx-auto max-w-xl px-4 ${hideNav ? "pb-4" : "pb-28"}`}>{screen}</main>
+      {!hideNav && (
         <nav aria-label="Hauptnavigation" className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/90 backdrop-blur"
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           {draft && (
