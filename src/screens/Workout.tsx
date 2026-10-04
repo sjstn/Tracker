@@ -5,7 +5,7 @@ import { buildDraftExercise, effectiveSet, finishWorkout, lastWorkingSet } from 
 import type { DraftExercise, DraftSet, Exercise, WorkoutDraft } from "../db/types";
 import { ExercisePicker } from "../components/ExercisePicker";
 import { Button, Empty, Header, NumberInput, toast } from "../components/ui";
-import { clock, fmtInput } from "../lib/format";
+import { clock, fmtInput, niceDate } from "../lib/format";
 import { progressionDefaults, resolveProgression, suggestWorkingSet } from "../lib/progression";
 import { navigate } from "../lib/router";
 
@@ -107,6 +107,7 @@ export function Workout() {
     <div className="pb-28">
       <Header title={draft.routineName ?? "Freies Training"} onBack={() => navigate("home")}
         action={<Elapsed since={draft.startedAt} />} />
+      {draft.performedOn && <p className="-mt-1 mb-3 text-sm text-soft">Nachtrag für {niceDate(draft.performedOn)}</p>}
 
       {!draft.exercises.length && <Empty>Füg die erste Übung hinzu.</Empty>}
 

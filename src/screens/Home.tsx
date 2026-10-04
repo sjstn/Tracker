@@ -1,32 +1,39 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "../db/db";
+import { db, getSettings } from "../db/db";
 import { startWorkout } from "../db/repo";
+import { Marker } from "../components/plan/Marker";
+import { TodayPlan } from "../components/plan/TodayPlan";
 import { Button, Card, Empty, Section } from "../components/ui";
-import { fmt, isoDate, localDay, weekDays } from "../lib/format";
+import { fmt, isoDate, localDay, parseDay, weekDays } from "../lib/format";
 import { navigate } from "../lib/router";
+import { useToday } from "../lib/useToday";
 import { HistoryList } from "./History";
 
 const DAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
 export function Home() {
-  const days = weekDays();
+  const today = useToday();
+  const days = weekDays(parseDay(today));
   const from = isoDate(days[0]);
+  const to = isoDate(days[6]);
   const data = useLiveQuery(async () => {
-    const [sessions, runs, routines, draft, sets] = await Promise.all([
+    const [sessions, runs, routines, draft, sets, settings, planDays] = await Promise.all([
       db.sessions.toArray(),
       db.runs.where("date").aboveOrEqual(from).toArray(),
       db.routines.orderBy("order").toArray(),
       db.drafts.get("current"),
       db.loggedSets.where("performedAt").aboveOrEqual(new Date(days[0]).toISOString()).toArray(),
+      getSettings(),
+      db.planDays.where("date").between(from, to, true, true).toArray(),
     ]);
     const weekSessions = sessions.filter((s) => localDay(s.performedAt) >= from);
     const volume = sets.filter((s) => !s.isWarmup).reduce((t, s) => t + s.weight * s.reps, 0);
-    return { weekSessions, runs, routines, draft, volume };
-  }, [from]);
+    return { weekSessions, runs, routines, draft, volume, settings, planDays };
+  }, [from, to]);
 
   if (!data) return null;
-  const { weekSessions, runs, routines, draft, volume } = data;
-  const today = isoDate();
+  const { weekSessions, runs, routines, draft, volume, settings, planDays } = data;
+  const planActive = settings.weekTemplate.some((d) => d.length > 0);
   const km = runs.reduce((t, r) => t + r.km, 0);
 
   const begin = async (routineId: number | null) => {
@@ -44,17 +51,19 @@ export function Home() {
       <div className="grid grid-cols-7 gap-1" role="group" aria-label="Wochenübersicht">
         {days.map((d, i) => {
           const iso = isoDate(d);
-          const gym = weekSessions.filter((s) => localDay(s.performedAt) === iso).length;
-          const run = runs.filter((r) => r.date === iso).length;
+          const plan = planDays.find((p) => p.date === iso);
+          const gym = weekSessions.filter((s) => localDay(s.performedAt) === iso && !s.planItemId).length;
+          const run = runs.filter((r) => r.date === iso && !r.planItemId).length;
           const isToday = iso === today;
           return (
-            <div key={iso} aria-label={`${DAYS[i]} ${d.getDate()}.: ${gym} Kraft, ${run} Lauf`}
+            <div key={iso} aria-label={`${DAYS[i]} ${d.getDate()}.: ${plan?.items.map((x) => `${x.label} ${x.status === "done" ? "erledigt" : x.status === "skipped" ? "ausgelassen" : "geplant"}`).join(", ") || "frei"}${gym + run ? `, ${gym + run} ohne Plan` : ""}`}
               className={`flex min-h-20 flex-col items-center gap-0.5 rounded-lg py-2 ${isToday ? "bg-tint ring-1 ring-plate/30" : ""}`}>
               <span className={`text-xs font-medium ${isToday ? "text-plate-ink" : "text-soft"}`}>{DAYS[i]}</span>
               <span className={`text-base font-semibold ${isToday ? "text-plate-ink" : ""}`}>{d.getDate()}</span>
               <span className="mt-1 flex flex-col items-center gap-1">
-                {[...Array(gym)].map((_, k) => <span key={"g" + k} className="h-2 w-2 rounded-full bg-plate" />)}
-                {[...Array(run)].map((_, k) => <span key={"r" + k} className="h-2 w-4 rounded-full bg-track" />)}
+                {plan?.items.map((i) => <Marker key={i.id} kind={i.ref.kind} status={i.status} />)}
+                {[...Array(gym)].map((_, k) => <Marker key={"g" + k} kind="routine" />)}
+                {[...Array(run)].map((_, k) => <Marker key={"r" + k} kind="runPlan" />)}
               </span>
             </div>
           );
@@ -77,6 +86,8 @@ export function Home() {
           </span>
           <span className="font-semibold">Weiter</span>
         </button>
+      ) : planActive ? (
+        <TodayPlan today={today} />
       ) : (
         <Section title="Training starten">
           <div className="grid gap-2">
@@ -89,6 +100,7 @@ export function Home() {
             </div>
             {!routines.length && <p className="text-sm text-soft">Leg unter „Pläne“ dein erstes Trainingsprogramm an, dann startest du es hier mit einem Tipp und bekommst Gewichtsvorschläge.</p>}
           </div>
+          <p className="mt-2 text-sm text-soft">Tipp: Unter „Pläne“ legst du deine Musterwoche an, dann schlägt dir die App jeden Tag das passende Training vor.</p>
         </Section>
       )}
 
