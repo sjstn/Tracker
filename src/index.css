@@ -69,9 +69,11 @@
 }
 
 :root { box-sizing: border-box; --safe-bottom: env(safe-area-inset-bottom, 0px); }
-/* Siehe fitScreen in index.html: iOS-26-Viewport zu kurz, App auf volle Bildschirmhöhe; 34px = Home-Balken aller Face-ID-iPhones */
-.ios-gap { --safe-bottom: max(env(safe-area-inset-bottom, 0px), 34px); }
 *, *::before, *::after { box-sizing: inherit; }
+/* iOS 26 lässt die Home-Bildschirm-App unten ein Stück zu kurz enden und zeichnet darunter nur den Hintergrund von html.
+   body malt die App grau; der Streifen darunter bekommt die Farbe der Tab-Leiste (data-nav setzt App.tsx). */
+html { background: var(--bg); }
+html[data-nav="on"] { background: var(--surface); }
 html { height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans);
@@ -79,7 +81,6 @@ body {
   height: 100%; overflow: hidden;
 }
 #root { height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
-.ios-gap #root { position: fixed; top: 0; left: 0; right: 0; height: var(--app-h); }
 /* iOS zoomt bei Eingabefeldern unter 16px – daher nie kleiner */
 input, select, textarea { font-size: 16px; }
 :focus-visible { outline: 2px solid var(--plate-ink); outline-offset: 2px; }

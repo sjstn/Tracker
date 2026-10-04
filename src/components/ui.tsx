@@ -122,7 +122,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
   const maxHeight = area ? `${Math.round(area.height * 0.88)}px` : "88dvh";
   return (
     <dialog ref={ref} onClose={onClose} onClick={(e) => e.target === ref.current && onClose()}
-      style={{ marginBottom: area?.keyboard || "calc(-1 * var(--app-gap, 0px))", maxHeight }}
+      style={{ marginBottom: area?.keyboard || undefined, maxHeight }}
       className="m-0 mt-auto w-full max-w-none rounded-t-2xl border-0 bg-bg p-0 text-ink shadow-xl backdrop:bg-gray-950/50 sm:mx-auto sm:max-w-xl">
       {open && (
         <div className="flex flex-col" style={{ maxHeight }}>
@@ -155,7 +155,7 @@ export function Toaster() {
   return (
     <div role="status" aria-live="polite"
       className={`fixed left-1/2 z-50 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-4 rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-lg ring-1 ring-white/10 transition-opacity ${msg ? "opacity-100" : "pointer-events-none opacity-0"}`}
-      style={{ bottom: "calc(var(--safe-bottom) + 5.5rem - var(--app-gap, 0px))" }}>
+      style={{ bottom: "calc(var(--safe-bottom) + 5.5rem)" }}>
       <span>{msg?.text}</span>
       {msg?.action && (
         <button type="button" className="font-semibold text-plate" onClick={() => { msg.action!.run(); setMsg(null); }}>
