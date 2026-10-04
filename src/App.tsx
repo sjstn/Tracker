@@ -14,12 +14,13 @@ import { Workout } from "./screens/Workout";
 import { RunForm } from "./screens/RunForm";
 import { RunPlanEdit } from "./screens/RunPlanEdit";
 import { Profile } from "./screens/Profile";
+import { Week } from "./screens/Week";
 
 const TABS = [
   ["home", "Start"], ["routines", "Pläne"], ["exercises", "Übungen"], ["history", "Verlauf"], ["profile", "Ich"],
 ] as const;
 // Welcher Tab bei Unterseiten hervorgehoben wird
-const PARENT: Record<string, string> = { routine: "routines", exercise: "exercises", session: "history", run: "home", runplan: "routines" };
+const PARENT: Record<string, string> = { routine: "routines", exercise: "exercises", session: "history", run: "home", runplan: "routines", week: "home" };
 
 export function App() {
   const { name, params } = useRoute();
@@ -45,6 +46,7 @@ export function App() {
     case "session": screen = <SessionDetail id={id!} key={id} />; break;
     case "run": screen = <RunForm id={id} itemId={params.item} key={id ?? params.item ?? "new"} />; break;
     case "profile": screen = <Profile />; break;
+    case "week": screen = <Week />; break;
     default: screen = <Home />;
   }
   const active = PARENT[name] ?? name;
