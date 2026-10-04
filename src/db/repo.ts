@@ -1,5 +1,7 @@
 import { db, getSettings, type AppDB } from "./db";
-import type { DraftExercise, DraftSet, LoggedSet, RoutineExercise, SetTemplate, WorkoutDraft } from "./types";
+import type { DraftExercise, DraftSet, LoggedSet, RoutineExercise, Run, SetTemplate, WorkoutDraft } from "./types";
+import { openItemToday, removeRefEverywhere, setItemStatus } from "./schedule";
+import { isoDate, parseDay } from "../lib/format";
 import { progressionDefaults, resolveProgression, suggestWorkingSet, warmupWeight } from "../lib/progression";
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
@@ -60,10 +62,18 @@ export async function buildDraftExercise(
   return { key: uid(), exerciseId, routineExerciseId: routineExercise?.id ?? null, sets };
 }
 
-export async function startWorkout(routineId: number | null, database: AppDB = db): Promise<WorkoutDraft> {
+export async function startWorkout(
+  routineId: number | null,
+  database: AppDB = db,
+  opts: { planItemId?: string | null; performedOn?: string | null } = {},
+): Promise<WorkoutDraft> {
+  // Steht der Plan heute an, wird das Training automatisch diesem Termin zugeordnet
+  const planItemId = opts.planItemId !== undefined
+    ? opts.planItemId
+    : routineId !== null ? (await openItemToday({ kind: "routine", id: routineId }, isoDate(), database))?.id ?? null : null;
   const draft: WorkoutDraft = {
     key: "current", startedAt: new Date().toISOString(), routineId, routineName: null,
-    notes: "", exercises: [], restEndsAt: null,
+    notes: "", exercises: [], restEndsAt: null, planItemId, performedOn: opts.performedOn ?? null,
   };
   if (routineId !== null) {
     const routine = await database.routines.get(routineId);
@@ -89,17 +99,18 @@ export function effectiveSet(s: DraftSet): { weight: number; reps: number } {
 
 /** Speichert das laufende Training und gibt die neue Session-ID zurück. */
 export async function finishWorkout(draft: WorkoutDraft, database: AppDB = db): Promise<number | null> {
-  const performedAt = draft.startedAt;
-  const durationSeconds = Math.max(0, Math.round((Date.now() - new Date(draft.startedAt).getTime()) / 1000));
+  // Nachtrag: Mittag des Termintags, keine Dauer
+  const performedAt = draft.performedOn ? new Date(parseDay(draft.performedOn).setHours(12)).toISOString() : draft.startedAt;
+  const durationSeconds = draft.performedOn ? null : Math.max(0, Math.round((Date.now() - new Date(draft.startedAt).getTime()) / 1000));
   const exercises = draft.exercises
     .map((x) => ({ x, sets: x.sets.filter((s) => s.completed).map((s) => ({ s, ...effectiveSet(s) })).filter((s) => Number.isFinite(s.weight) && s.reps > 0) }))
     .filter((e) => e.sets.length);
 
-  return database.transaction("rw", [database.sessions, database.loggedExercises, database.loggedSets, database.drafts], async () => {
+  return database.transaction("rw", [database.sessions, database.loggedExercises, database.loggedSets, database.drafts, database.planDays], async () => {
     if (!exercises.length) { await database.drafts.delete("current"); return null; }
     const sessionId = (await database.sessions.add({
       routineId: draft.routineId, routineName: draft.routineName, performedAt,
-      notes: draft.notes.trim() || null, durationSeconds,
+      notes: draft.notes.trim() || null, durationSeconds, ...(draft.planItemId ? { planItemId: draft.planItemId } : {}),
     })) as number;
     for (const [order, e] of exercises.entries()) {
       const leId = (await database.loggedExercises.add({
@@ -110,24 +121,28 @@ export async function finishWorkout(draft: WorkoutDraft, database: AppDB = db): 
         slotNumber: s.slotNumber, weight, reps, isWarmup: s.isWarmup, completed: true,
       })));
     }
+    if (draft.planItemId) await setItemStatus(draft.planItemId, "done", database);
     await database.drafts.delete("current");
     return sessionId;
   });
 }
 
 export async function deleteSession(id: number, database: AppDB = db) {
-  await database.transaction("rw", [database.sessions, database.loggedExercises, database.loggedSets], async () => {
+  await database.transaction("rw", [database.sessions, database.loggedExercises, database.loggedSets, database.planDays], async () => {
+    const planItemId = (await database.sessions.get(id))?.planItemId;
     await database.loggedSets.where("workoutSessionId").equals(id).delete();
     await database.loggedExercises.where("workoutSessionId").equals(id).delete();
     await database.sessions.delete(id);
+    if (planItemId) await setItemStatus(planItemId, "planned", database);
   });
 }
 
 export async function deleteRoutine(id: number, database: AppDB = db) {
-  await database.transaction("rw", [database.routines, database.routineExercises, database.setTemplates, database.sessions], async () => {
+  await database.transaction("rw", [database.routines, database.routineExercises, database.setTemplates, database.sessions, database.settings, database.planDays], async () => {
     const res = await database.routineExercises.where("routineId").equals(id).primaryKeys();
     await database.setTemplates.where("routineExerciseId").anyOf(res as number[]).delete();
     await database.routineExercises.bulkDelete(res);
+    await removeRefEverywhere({ kind: "routine", id }, database);
     await database.routines.delete(id);
     // Vergangene Trainings bleiben erhalten (routineId → null, Name bleibt gespeichert)
     await database.sessions.where("routineId").equals(id).modify({ routineId: null });
@@ -140,8 +155,27 @@ export async function exerciseInUse(id: number, database: AppDB = db): Promise<b
     || (await database.routineExercises.where("exerciseId").equals(id).count()) > 0;
 }
 
+/** Lauf speichern; mit Termin wird dieser erledigt. Gibt die Lauf-ID zurück. */
+export async function saveRun(run: Omit<Run, "id">, id?: number, database: AppDB = db): Promise<number> {
+  return database.transaction("rw", [database.runs, database.planDays], async () => {
+    let runId = id;
+    if (id) await database.runs.update(id, run);
+    else runId = (await database.runs.add(run)) as number;
+    if (run.planItemId) await setItemStatus(run.planItemId, "done", database);
+    return runId!;
+  });
+}
+
+export async function deleteRun(id: number, database: AppDB = db) {
+  await database.transaction("rw", [database.runs, database.planDays], async () => {
+    const planItemId = (await database.runs.get(id))?.planItemId;
+    await database.runs.delete(id);
+    if (planItemId) await setItemStatus(planItemId, "planned", database);
+  });
+}
+
 /* ---------- Sicherung ---------- */
-const BACKUP_TABLES = ["settings", "exercises", "routines", "routineExercises", "setTemplates", "sessions", "loggedExercises", "loggedSets", "bodyweight", "runs"] as const;
+const BACKUP_TABLES = ["settings", "exercises", "routines", "routineExercises", "setTemplates", "sessions", "loggedExercises", "loggedSets", "bodyweight", "runs", "runPlans", "planDays"] as const;
 
 export async function exportBackup(database: AppDB = db): Promise<string> {
   const data: Record<string, unknown[]> = {};

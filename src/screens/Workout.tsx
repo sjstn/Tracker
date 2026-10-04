@@ -5,7 +5,7 @@ import { buildDraftExercise, effectiveSet, finishWorkout, lastWorkingSet } from 
 import type { DraftExercise, DraftSet, Exercise, WorkoutDraft } from "../db/types";
 import { ExercisePicker } from "../components/ExercisePicker";
 import { Button, Empty, Header, NumberInput, toast } from "../components/ui";
-import { clock, fmtInput } from "../lib/format";
+import { clock, fmtInput, niceDate } from "../lib/format";
 import { progressionDefaults, resolveProgression, suggestWorkingSet } from "../lib/progression";
 import { navigate } from "../lib/router";
 
@@ -107,6 +107,7 @@ export function Workout() {
     <div className="pb-28">
       <Header title={draft.routineName ?? "Freies Training"} onBack={() => navigate("home")}
         action={<Elapsed since={draft.startedAt} />} />
+      {draft.performedOn && <p className="-mt-1 mb-3 text-sm text-soft">Nachtrag für {niceDate(draft.performedOn)}</p>}
 
       {!draft.exercises.length && <Empty>Füg die erste Übung hinzu.</Empty>}
 
@@ -121,14 +122,14 @@ export function Workout() {
       <Button variant="ghost" className="mt-1 w-full" onClick={() => setPicker(true)}>Übung hinzufügen</Button>
 
       <label className="mt-6 block">
-        <span className="mb-1 block text-sm font-medium text-soft">Notiz</span>
+        <span className="mb-1.5 block text-sm font-medium">Notiz</span>
         <textarea value={draft.notes} onChange={(e) => update((d) => { d.notes = e.target.value; })} rows={2}
           placeholder="Wie lief es? Schmerzen, Schlaf, Technik"
-          className="w-full rounded-lg border border-line bg-surface p-3 text-ink placeholder:text-soft/70" />
+          className="w-full rounded-lg border border-line bg-surface p-3 text-ink shadow-sm outline-none placeholder:text-soft/70 focus:border-plate focus:ring-2 focus:ring-plate/30" />
       </label>
 
       <div className="mt-5 grid gap-2">
-        <Button variant="primary" className="text-lg" onClick={finish}>Training beenden</Button>
+        <Button variant="primary" className="text-base" onClick={finish}>Training beenden</Button>
         <Button variant="danger" onClick={discard}>Training verwerfen</Button>
       </div>
 
@@ -148,11 +149,11 @@ function ExerciseCard({ x, name, onField, onToggle, onAddSet, onRemoveSet, onRem
   let working = 0;
   const allDone = x.sets.length > 0 && x.sets.every((s) => s.completed);
   return (
-    <section className={`mb-3 rounded-xl border-l-4 bg-surface p-3 ${allDone ? "border-ok" : "border-plate"}`}>
+    <section className={`mb-3 rounded-xl border bg-surface p-3 shadow-sm ${allDone ? "border-ok/60 ring-1 ring-ok/30" : "border-line"}`}>
       <div className="mb-2 flex items-start gap-2">
-        <button type="button" onClick={onInfo} className="flex-1 pt-1 text-left text-lg font-semibold leading-tight">{name}</button>
+        <button type="button" onClick={onInfo} className="flex-1 pt-1 text-left text-base font-semibold leading-tight">{name}</button>
         <button type="button" aria-label="Optionen für diese Übung" aria-expanded={menu} onClick={() => setMenu(!menu)}
-          className="h-10 w-10 rounded-lg text-xl text-soft">⋯</button>
+          className="h-10 w-10 rounded-lg text-xl text-soft hover:bg-surface-2">⋯</button>
       </div>
       {menu && (
         <div className="mb-3 flex flex-wrap gap-2">
@@ -169,17 +170,17 @@ function ExerciseCard({ x, name, onField, onToggle, onAddSet, onRemoveSet, onRem
         return (
           <div key={si} className="mt-1.5">
             <div className={`grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 ${s.completed ? "opacity-70" : ""}`}>
-              <span className={`text-center font-display text-lg font-semibold ${s.isWarmup ? "text-soft" : ""}`}
+              <span className={`text-center text-sm font-semibold ${s.isWarmup ? "text-soft" : ""}`}
                 title={s.isWarmup ? "Aufwärmsatz" : undefined}>{label}</span>
               <NumberInput aria-label={`Gewicht in kg, Satz ${label}`} value={s.weight} placeholder={fmtInput(s.targetWeight) || "kg"}
-                onChange={(v) => onField(si, { weight: v })} className="tnum text-lg font-semibold" />
+                onChange={(v) => onField(si, { weight: v })} className="tnum font-semibold" />
               <NumberInput decimal={false} aria-label={`Wiederholungen, Satz ${label}`} value={s.reps} placeholder={fmtInput(s.targetReps) || "Wdh."}
-                onChange={(v) => onField(si, { reps: v })} className="tnum text-lg font-semibold" />
+                onChange={(v) => onField(si, { reps: v })} className="tnum font-semibold" />
               <button type="button" onClick={() => onToggle(si)} aria-pressed={s.completed}
                 aria-label={s.completed ? `Satz ${label} wieder öffnen` : `Satz ${label} abhaken`}
-                className={`h-12 w-12 rounded-lg border text-xl font-bold ${s.completed ? "border-ok bg-ok text-white" : "border-line bg-surface-2 text-soft"}`}>✓</button>
+                className={`h-12 w-12 rounded-lg border text-xl font-bold ${s.completed ? "border-transparent bg-ok text-white shadow-sm" : "border-line bg-surface text-soft shadow-sm"}`}>✓</button>
             </div>
-            {s.hint && !s.completed && <p className={`ml-10 mt-0.5 text-xs ${s.hint.startsWith("Ziel geschafft") ? "text-pr" : "text-soft"}`}>{s.hint}</p>}
+            {s.hint && !s.completed && <p className={`ml-10 mt-0.5 text-xs ${s.hint.startsWith("Ziel geschafft") ? "font-medium text-plate-ink" : "text-soft"}`}>{s.hint}</p>}
           </div>
         );
       })}
@@ -193,7 +194,7 @@ function ExerciseCard({ x, name, onField, onToggle, onAddSet, onRemoveSet, onRem
 
 function Elapsed({ since }: { since: string }) {
   const now = useNow(1000);
-  return <span className="pr-2 font-display text-xl font-semibold text-soft tnum">{clock((now - new Date(since).getTime()) / 1000)}</span>;
+  return <span className="pr-2 text-base font-semibold text-soft tnum">{clock((now - new Date(since).getTime()) / 1000)}</span>;
 }
 
 function RestTimer({ endsAt, onChange }: { endsAt: number; onChange: (t: number | null) => void }) {
@@ -206,12 +207,12 @@ function RestTimer({ endsAt, onChange }: { endsAt: number; onChange: (t: number 
   }, [left]);
   const done = left <= 0;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface px-4 pt-3"
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 px-4 pt-3 shadow-[0_-4px_12px_rgb(0_0_0/0.04)] backdrop-blur"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }} role="timer" aria-live="off">
       <div className="mx-auto flex max-w-xl items-center gap-3">
         <div className="flex-1">
           <span className="block text-xs text-soft">{done ? "Pause vorbei" : "Pause"}</span>
-          <span className={`font-display text-3xl font-bold leading-none tnum ${done ? "text-ok" : ""}`}>{done ? "Weiter geht's" : clock(left)}</span>
+          <span className={`text-2xl font-semibold leading-none tracking-tight tnum ${done ? "text-ok" : ""}`}>{done ? "Weiter geht's" : clock(left)}</span>
         </div>
         {!done && <Button className="min-h-11 px-3" onClick={() => onChange(endsAt + 30000)}>+30 s</Button>}
         <Button variant={done ? "primary" : "quiet"} className="min-h-11 px-3" onClick={() => onChange(null)}>{done ? "Schließen" : "Überspringen"}</Button>

@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable } from "dexie";
 import type {
-  BodyweightEntry, Exercise, LoggedExercise, LoggedSet, Routine, RoutineExercise,
-  Run, SetTemplate, Settings, WorkoutDraft, WorkoutSession,
+  BodyweightEntry, Exercise, LoggedExercise, LoggedSet, PlanDay, Routine, RoutineExercise,
+  Run, RunPlan, SetTemplate, Settings, WorkoutDraft, WorkoutSession,
 } from "./types";
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -16,9 +16,27 @@ export const DEFAULT_SETTINGS: Settings = {
   warmupValue: 50,
   weightRounding: 2.5,
   restSeconds: 120,
+  accent: "amber",
+  theme: "system",
+  weekTemplate: [[], [], [], [], [], [], []],
+  shiftMode: "continuous",
 };
 
 export const MUSCLE_GROUPS = ["Brust", "Rücken", "Beine", "Schultern", "Arme", "Bauch"] as const;
+
+export const SCHEMA_V1 = {
+  settings: "key",
+  exercises: "++id, name, muscleGroup",
+  routines: "++id, order",
+  routineExercises: "++id, routineId, exerciseId",
+  setTemplates: "++id, routineExerciseId",
+  sessions: "++id, performedAt, routineId",
+  loggedExercises: "++id, workoutSessionId, exerciseId",
+  loggedSets: "++id, loggedExerciseId, workoutSessionId, exerciseId, [exerciseId+slotNumber], performedAt",
+  bodyweight: "++id, recordedAt",
+  runs: "++id, date",
+  drafts: "key",
+};
 
 export const EXERCISE_LIBRARY: [string, (typeof MUSCLE_GROUPS)[number]][] = [
   ["Bankdrücken (Langhantel)", "Brust"], ["Schrägbankdrücken (Langhantel)", "Brust"],
@@ -52,22 +70,13 @@ export class AppDB extends Dexie {
   bodyweight!: EntityTable<BodyweightEntry, "id">;
   runs!: EntityTable<Run, "id">;
   drafts!: EntityTable<WorkoutDraft, "key">;
+  runPlans!: EntityTable<RunPlan, "id">;
+  planDays!: EntityTable<PlanDay, "date">;
 
   constructor(name = "satz-und-strecke") {
     super(name);
-    this.version(1).stores({
-      settings: "key",
-      exercises: "++id, name, muscleGroup",
-      routines: "++id, order",
-      routineExercises: "++id, routineId, exerciseId",
-      setTemplates: "++id, routineExerciseId",
-      sessions: "++id, performedAt, routineId",
-      loggedExercises: "++id, workoutSessionId, exerciseId",
-      loggedSets: "++id, loggedExerciseId, workoutSessionId, exerciseId, [exerciseId+slotNumber], performedAt",
-      bodyweight: "++id, recordedAt",
-      runs: "++id, date",
-      drafts: "key",
-    });
+    this.version(1).stores(SCHEMA_V1);
+    this.version(2).stores({ runPlans: "++id, order", planDays: "date" });
     this.on("populate", async (tx) => {
       await tx.table("settings").add(DEFAULT_SETTINGS);
       await tx.table("exercises").bulkAdd(EXERCISE_LIBRARY.map(([name, muscleGroup]) => ({ name, muscleGroup, custom: false })));
@@ -78,7 +87,10 @@ export class AppDB extends Dexie {
 export const db = new AppDB();
 
 export async function getSettings(database: AppDB = db): Promise<Settings> {
-  return { ...DEFAULT_SETTINGS, ...((await database.settings.get("profile")) ?? {}) };
+  const s = { ...DEFAULT_SETTINGS, ...((await database.settings.get("profile")) ?? {}) };
+  if (!Array.isArray(s.weekTemplate) || s.weekTemplate.length !== 7) s.weekTemplate = DEFAULT_SETTINGS.weekTemplate;
+  if (s.shiftMode !== "fixedWeek") s.shiftMode = "continuous";
+  return s;
 }
 
 /** Bittet den Browser, die Daten nicht automatisch zu löschen (wichtig auf iOS). */

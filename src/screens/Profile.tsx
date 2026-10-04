@@ -2,9 +2,11 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
 import { db, DEFAULT_SETTINGS, getSettings, requestPersistence } from "../db/db";
 import { exportBackup, importBackup } from "../db/repo";
+import { clearPlanUndo, ensureHorizon } from "../db/schedule";
 import type { Settings } from "../db/types";
-import { Button, Field, Header, NumberInput, Section, Select, toast } from "../components/ui";
+import { Button, Card, Field, Header, NumberInput, Section, Select, toast } from "../components/ui";
 import { LineChart } from "../components/LineChart";
+import { ACCENTS, THEMES } from "../lib/appearance";
 import { fmt, isoDate, niceDate, num } from "../lib/format";
 import { BufferedNumber } from "./Routines";
 
@@ -32,18 +34,50 @@ export function Profile() {
     <div>
       <Header title="Ich" />
 
+      <Section title="Darstellung">
+        <Card className="divide-y divide-line">
+          <div className="p-4">
+            <span id="accent-label" className="text-sm font-medium">Akzentfarbe</span>
+            <div className="mt-2 grid grid-cols-4 gap-2" role="radiogroup" aria-labelledby="accent-label">
+              {ACCENTS.map(([key, label, hex]) => {
+                const on = settings.accent === key;
+                return (
+                  <button key={key} type="button" role="radio" aria-checked={on} onClick={() => save({ accent: key })}
+                    className={`flex flex-col items-center gap-1.5 rounded-lg py-2 ${on ? "bg-surface-2 ring-1 ring-line" : ""}`}>
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-white"
+                      style={{ background: hex, boxShadow: on ? `0 0 0 2px var(--surface), 0 0 0 4px ${hex}` : undefined }}>
+                      {on && <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path fillRule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0z" clipRule="evenodd" /></svg>}
+                    </span>
+                    <span className={`text-xs font-medium ${on ? "" : "text-soft"}`}>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="p-4">
+            <span id="theme-label" className="text-sm font-medium">Hell / Dunkel</span>
+            <div className="mt-2 grid grid-cols-3 gap-0.5 rounded-lg bg-surface-2 p-0.5 text-sm font-medium" role="radiogroup" aria-labelledby="theme-label">
+              {THEMES.map(([key, label]) => (
+                <button key={key} type="button" role="radio" aria-checked={settings.theme === key} onClick={() => save({ theme: key })}
+                  className={`min-h-10 rounded-md ${settings.theme === key ? "bg-surface shadow-sm" : "text-soft"}`}>{label}</button>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </Section>
+
       <Section title="Körpergewicht">
         <div className="flex gap-2">
           <NumberInput aria-label="Körpergewicht heute in kg" placeholder={latest ? `${fmt(latest.weight)} kg` : "kg"} value={w} onChange={setW} className="tnum" />
           <Button variant="primary" onClick={addWeight}>Eintragen</Button>
         </div>
         {latest && (
-          <p className="mt-3 text-soft">
-            Zuletzt <b className="font-display text-xl text-ink">{fmt(latest.weight)} kg</b> am {niceDate(latest.recordedAt)}
+          <p className="mt-3 text-sm text-soft">
+            Zuletzt <b className="font-semibold text-ink">{fmt(latest.weight)} kg</b> am {niceDate(latest.recordedAt)}
             {bmi ? `, BMI ${fmt(bmi, 1)}` : ""}
           </p>
         )}
-        <div className="mt-3"><LineChart points={weights.slice(-60).map((e) => ({ date: e.recordedAt, value: e.weight }))} unit="kg" color="var(--ink)" /></div>
+        <Card className="mt-3 p-3"><LineChart points={weights.slice(-60).map((e) => ({ date: e.recordedAt, value: e.weight }))} unit="kg" /></Card>
         {weights.length > 0 && (
           <details className="mt-2">
             <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-plate-ink">Einträge bearbeiten</summary>
@@ -63,7 +97,7 @@ export function Profile() {
 
       <Section title="Standard-Progression">
         <p className="mb-3 text-sm text-soft">Gilt für jede Übung, solange du im Plan nichts anderes festlegst. Erreichst du in einem Satz die obere Wiederholungszahl, schlägt die App beim nächsten Mal mehr Gewicht vor.</p>
-        <div className="grid gap-3">
+        <Card className="grid gap-3 p-4">
           <div className="flex items-center gap-2">
             <span className="w-28 shrink-0 text-sm">Wiederholungen</span>
             <BufferedNumber ariaLabel="Wiederholungen von" decimal={false} value={settings.repTargetMin} onCommit={(v) => save({ repTargetMin: v ?? DEFAULT_SETTINGS.repTargetMin })} />
@@ -96,7 +130,7 @@ export function Profile() {
             <BufferedNumber ariaLabel="Körpergröße in cm" value={settings.heightCm} onCommit={(v) => save({ heightCm: v })} />
             <span className="text-sm text-soft">cm</span>
           </div>
-        </div>
+        </Card>
       </Section>
 
       <Backup persisted={persisted} onPersist={async () => setPersisted(await requestPersistence())} />
@@ -123,7 +157,7 @@ function Backup({ persisted, onPersist }: { persisted: boolean | null; onPersist
   const upload = async (f?: File) => {
     if (!f) return;
     if (!confirm("Die Sicherung ersetzt alle Daten auf diesem Gerät. Fortfahren?")) return;
-    try { await importBackup(await f.text()); toast("Sicherung eingespielt"); }
+    try { await importBackup(await f.text()); clearPlanUndo(); await ensureHorizon(); toast("Sicherung eingespielt"); }
     catch (e) { toast((e as Error).message || "Die Datei konnte nicht gelesen werden."); }
   };
   const wipe = async () => {
@@ -139,7 +173,7 @@ function Backup({ persisted, onPersist }: { persisted: boolean | null; onPersist
       </p>
       <div className="grid grid-cols-2 gap-2">
         <Button onClick={download}>Sicherung speichern</Button>
-        <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-line bg-surface px-4 font-semibold">
+        <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-line bg-surface px-4 text-sm font-semibold shadow-sm">
           Sicherung laden
           <input type="file" accept="application/json,.json" className="sr-only" onChange={(e) => { upload(e.target.files?.[0]); e.target.value = ""; }} />
         </label>

@@ -4,6 +4,36 @@
 export type IncrementType = "fixed" | "percent";
 export type WarmupScheme = "percent_of_working" | "fixed_weight";
 export type SetType = "warmup" | "working";
+export type Accent = "amber" | "indigo" | "emerald" | "rose";
+export type ThemeMode = "system" | "light" | "dark";
+
+/** Verweis auf ein planbares Training: Kraftplan oder Laufart. */
+export type TrainingRef = { kind: "routine"; id: number } | { kind: "runPlan"; id: number };
+export type ShiftMode = "continuous" | "fixedWeek";
+export type PlanItemStatus = "planned" | "done" | "skipped";
+export interface PlanItem {
+  id: string;
+  ref: TrainingRef;
+  status: PlanItemStatus;
+  /** Name zum Zeitpunkt der Planung, falls der Plan später gelöscht wird */
+  label: string;
+}
+export interface PlanDay {
+  date: string; // YYYY-MM-DD, lokaler Tag
+  /** Wochentag der Musterwoche (0 = Mo), aus dem der Tag stammt; null = eingefügte Pause */
+  seq: number | null;
+  items: PlanItem[];
+}
+/** Laufart mit Ziel. Dauer in Sekunden, Pace in Sekunden pro km. */
+export interface RunPlan {
+  id?: number;
+  name: string;
+  targetKind: "duration" | "distance";
+  targetValue: number;
+  paceMin: number | null; // schnelleres Ende
+  paceMax: number | null; // langsameres Ende
+  order: number;
+}
 
 /** Die sechs Progressionsfelder, überall gleich benannt. */
 export interface ProgressionFields {
@@ -22,6 +52,11 @@ export interface Settings extends ProgressionFields {
   /** Auf dieses Raster werden berechnete Gewichte gerundet (Prozent-Steigerung, Aufwärmsätze). */
   weightRounding: number;
   restSeconds: number;
+  accent: Accent;
+  theme: ThemeMode;
+  /** Musterwoche: 7 Einträge ab Montag, [] = Ruhetag */
+  weekTemplate: TrainingRef[][];
+  shiftMode: ShiftMode;
 }
 
 export interface Exercise {
@@ -61,6 +96,8 @@ export interface WorkoutSession {
   performedAt: string; // ISO-Zeitstempel
   notes: string | null;
   durationSeconds: number | null;
+  /** Termin aus dem Wochenplan, der mit diesem Training erledigt wurde */
+  planItemId?: string;
 }
 
 export interface LoggedExercise {
@@ -97,6 +134,8 @@ export interface Run {
   km: number;
   seconds: number;
   note: string | null;
+  planItemId?: string;
+  runPlanId?: number;
 }
 
 /* ---------- Laufendes Training (Entwurf, übersteht App-Neustarts) ---------- */
@@ -125,4 +164,7 @@ export interface WorkoutDraft {
   notes: string;
   exercises: DraftExercise[];
   restEndsAt: number | null;
+  planItemId?: string | null;
+  /** Nachtrag für einen vergangenen Tag (YYYY-MM-DD) */
+  performedOn?: string | null;
 }

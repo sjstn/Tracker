@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#12171E" />
+    <meta name="theme-color" content="#f9fafb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#030712" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -11,6 +12,14 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <title>Satz & Strecke</title>
+    <script>
+      // Akzentfarbe und Hell/Dunkel vor dem ersten Zeichnen setzen (Spiegel aus src/lib/appearance.ts)
+      try {
+        var a = JSON.parse(localStorage.getItem("appearance") || "null");
+        if (a && a.accent) document.documentElement.setAttribute("data-accent", a.accent);
+        if (a && (a.theme === "light" || a.theme === "dark")) document.documentElement.setAttribute("data-theme", a.theme);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

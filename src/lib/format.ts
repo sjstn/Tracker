@@ -38,3 +38,16 @@ export function pace(sec: number, km: number): string {
   const m = Math.floor(p / 60), s = Math.round(p % 60);
   return s === 60 ? `${m + 1}:00` : `${m}:${String(s).padStart(2, "0")}`;
 }
+
+/** "6:15", "6,15" oder "6.15" → 375 Sekunden pro km; "6" → 360. Ungültig → NaN. */
+export function parsePace(v: string): number {
+  const m = v.trim().match(/^(\d{1,2})(?:[:.,](\d{2}))?$/);
+  if (!m) return NaN;
+  const sec = m[2] === undefined ? 0 : Number(m[2]);
+  return sec < 60 ? Number(m[1]) * 60 + sec : NaN;
+}
+export function fmtPace(secPerKm: number): string {
+  const s = Math.round(secPerKm);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+export const fmtMinutes = (sec: number) => `${fmt(sec / 60, 0)} min`;

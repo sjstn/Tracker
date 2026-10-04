@@ -34,7 +34,7 @@ export function ExercisePicker({ open, onClose, onPick, multi = true }: { open: 
     <Sheet open={open} onClose={close} title="Übung hinzufügen">
       <Input type="search" placeholder="Suchen oder neue Übung eingeben" value={q} onChange={(e) => setQ(e.target.value)} />
       {q.trim() && !exact && (
-        <div className="mt-3 rounded-xl bg-surface p-3">
+        <div className="mt-3 rounded-xl border border-line bg-surface p-3 shadow-sm">
           <p className="mb-2 text-sm text-soft">„{q.trim()}“ als eigene Übung anlegen</p>
           <div className="flex gap-2">
             <div className="flex-1"><Select value={newGroup} onChange={setNewGroup} options={MUSCLE_GROUPS.map((g) => [g, g])} aria-label="Muskelgruppe" /></div>
@@ -44,16 +44,16 @@ export function ExercisePicker({ open, onClose, onPick, multi = true }: { open: 
       )}
       {groups.map(([g, list]) => (
         <div key={g} className="mt-4">
-          <h3 className="mb-1 font-display text-lg font-semibold text-soft">{g}</h3>
-          <ul>
+          <h3 className="mb-1.5 text-sm font-medium text-soft">{g}</h3>
+          <ul className="divide-y divide-line rounded-xl border border-line bg-surface shadow-sm">
             {list.map((e) => {
               const count = picked.filter((p) => p === e.id).length;
               return (
                 <li key={e.id}>
                   <button type="button" onClick={() => pick(e.id!)}
-                    className="flex min-h-12 w-full items-center justify-between border-b border-line text-left">
+                    className="flex min-h-12 w-full items-center justify-between px-4 text-left text-sm font-medium">
                     <span>{e.name}{e.custom && <span className="ml-2 text-xs text-soft">eigene</span>}</span>
-                    <span className={`font-display text-lg font-semibold ${count ? "text-plate-ink" : "text-soft"}`}>{count ? `✓${count > 1 ? " " + count : ""}` : "+"}</span>
+                    <span className={`text-base font-semibold ${count ? "text-plate-ink" : "text-soft"}`}>{count ? `✓${count > 1 ? " " + count : ""}` : "+"}</span>
                   </button>
                 </li>
               );
