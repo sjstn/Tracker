@@ -19,17 +19,6 @@
         if (a && a.accent) document.documentElement.setAttribute("data-accent", a.accent);
         if (a && (a.theme === "light" || a.theme === "dark")) document.documentElement.setAttribute("data-theme", a.theme);
       } catch (e) {}
-      // iOS 26 meldet der Home-Bildschirm-App einen um den Kamera-Bereich zu kurzen Viewport (unten bleibt ein Streifen frei).
-      // Dann auf die echte Bildschirmhöhe strecken; der Abstand zum Home-Balken kommt in dem Fall ebenfalls als 0.
-      function fitScreen() {
-        var r = document.documentElement, gap = screen.height - innerHeight;
-        var short = navigator.standalone === true && innerWidth < innerHeight && Math.abs(screen.width - innerWidth) < 2 && gap > 20 && gap < 80;
-        r.classList.toggle("ios-gap", short);
-        r.style.setProperty("--app-h", short ? screen.height + "px" : "100%");
-        r.style.setProperty("--app-gap", short ? gap + "px" : "0px");
-      }
-      fitScreen();
-      addEventListener("resize", fitScreen);
     </script>
   </head>
   <body>

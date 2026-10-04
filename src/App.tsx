@@ -65,6 +65,7 @@ export function App() {
   }
   const active = PARENT[name] ?? name;
   const hideNav = name === "workout" || name === "setup" || name === "tour";
+  useEffect(() => { document.documentElement.dataset.nav = hideNav ? "off" : "on"; }, [hideNav]);
 
   return (
     <>
@@ -72,7 +73,7 @@ export function App() {
         <main className={`mx-auto max-w-xl px-4 ${name === "setup" || name === "tour" ? "h-full pb-0" : name === "workout" ? "flex min-h-full flex-col pb-0" : "pb-6"}`}>{screen}</main>
       </div>
       {!hideNav && (
-        <nav aria-label="Hauptnavigation" className="relative shrink-0 border-t border-line bg-surface"
+        <nav aria-label="Hauptnavigation" className="shrink-0 border-t border-line bg-surface"
           // Wie die iOS-Tab-Leiste: Beschriftung knapp über dem Home-Balken, nicht den vollen Sicherheitsabstand darunter
           style={{ paddingBottom: "max(0.5rem, calc(var(--safe-bottom) - 1.125rem))" }}>
           {draft && (
@@ -89,8 +90,6 @@ export function App() {
               </button>
             ))}
           </div>
-          {/* iOS lässt unter der App mitunter einen Streifen frei; die Leiste läuft bis zum Bildschirmrand weiter */}
-          <div aria-hidden className="absolute inset-x-0 top-full h-40 bg-surface" />
         </nav>
       )}
       <Toaster />
