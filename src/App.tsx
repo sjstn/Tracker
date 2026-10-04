@@ -66,7 +66,7 @@ export function App() {
 
   return (
     <>
-      <div id="scroller" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div id="scroller" className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <main className={`mx-auto max-w-xl px-4 ${name === "setup" ? "h-full pb-0" : name === "workout" ? "pb-0" : "pb-6"}`}>{screen}</main>
       </div>
       {!hideNav && (

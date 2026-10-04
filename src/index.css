@@ -70,7 +70,7 @@
 
 :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); }
 *, *::before, *::after { box-sizing: inherit; }
-html { height: 100%; -webkit-text-size-adjust: 100%; }
+html { height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none;
