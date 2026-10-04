@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, getSettings } from "../db/db";
 import { startWorkout } from "../db/repo";
 import { Marker } from "../components/plan/Marker";
+import { PullToRefresh } from "../components/PullToRefresh";
 import { WeekSetupCard } from "../components/setup/WeekSetupCard";
 import { TodayPlan } from "../components/plan/TodayPlan";
 import { Button, Card, Empty, Section } from "../components/ui";
@@ -45,6 +46,7 @@ export function Home() {
 
   return (
     <div>
+      <PullToRefresh />
       <p className="mt-6 text-sm text-soft">
         {settings.name && <><span className="font-medium text-ink">Hallo, {settings.name}</span> · </>}
         {parseDay(today).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}

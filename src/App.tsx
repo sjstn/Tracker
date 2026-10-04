@@ -71,7 +71,8 @@ export function App() {
       </div>
       {!hideNav && (
         <nav aria-label="Hauptnavigation" className="shrink-0 border-t border-line bg-surface"
-          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+          // Wie die iOS-Tab-Leiste: Beschriftung knapp über dem Home-Balken, nicht den vollen Sicherheitsabstand darunter
+          style={{ paddingBottom: "max(0.5rem, calc(env(safe-area-inset-bottom, 0px) - 1.125rem))" }}>
           {draft && (
             <button type="button" onClick={() => navigate("workout")}
               className="flex w-full items-center justify-between bg-plate px-4 py-2 text-sm font-semibold text-white">
@@ -81,7 +82,7 @@ export function App() {
           <div className="mx-auto grid max-w-xl grid-cols-5">
             {TABS.map(([r, label]) => (
               <button key={r} type="button" aria-current={active === r ? "page" : undefined} onClick={() => navigate(r)}
-                className={`min-h-15 border-t-2 text-sm font-medium ${active === r ? "border-plate text-plate-ink font-semibold" : "border-transparent text-soft"}`}>
+                className={`min-h-12 border-t-2 text-sm font-medium ${active === r ? "border-plate text-plate-ink font-semibold" : "border-transparent text-soft"}`}>
                 {label}
               </button>
             ))}

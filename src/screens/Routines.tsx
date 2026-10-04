@@ -1,3 +1,5 @@
+import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
 import { db, getSettings } from "../db/db";
@@ -10,7 +12,7 @@ import { Marker } from "../components/plan/Marker";
 import { Button, Card, Empty, Header, Input, NumberInput, Section, Select, toast } from "../components/ui";
 import { describeTarget } from "../lib/runTarget";
 import { fmtInput, num } from "../lib/format";
-import { navigate } from "../lib/router";
+import { back, navigate } from "../lib/router";
 
 export function Routines() {
   const routines = useLiveQuery(() => db.routines.orderBy("order").toArray(), []);
@@ -117,6 +119,10 @@ export function RoutineEdit({ id }: { id: number }) {
   const settings = useLiveQuery(() => getSettings(), []);
   const [picker, setPicker] = useState(false);
   const [open, setOpen] = useState<number | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   if (routine === undefined || !items || !settings) return null;
   if (!routine) return <div><Header title="Plan" onBack /><Empty>Diesen Plan gibt es nicht mehr.</Empty></div>;
@@ -128,13 +134,16 @@ export function RoutineEdit({ id }: { id: number }) {
     const warm = COMPOUND_GROUPS.includes(ex?.muscleGroup ?? "") ? 1 : 0;
     await db.setTemplates.bulkAdd([...Array(warm + 3)].map((_, i) => ({ routineExerciseId: reId, slotNumber: i + 1, type: i < warm ? "warmup" as const : "working" as const })));
   };
-  const move = async (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= items.length) return;
+  const reorder = async (from: number, to: number) => {
+    if (to < 0 || to >= items.length || from === to) return;
+    const next = arrayMove(items, from, to);
     await db.transaction("rw", db.routineExercises, async () => {
-      await db.routineExercises.update(items[i].re.id!, { order: j });
-      await db.routineExercises.update(items[j].re.id!, { order: i });
+      await Promise.all(next.map(({ re }, i) => db.routineExercises.update(re.id!, { order: i })));
     });
+  };
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over) return;
+    reorder(items.findIndex((x) => x.re.id === active.id), items.findIndex((x) => x.re.id === over.id));
   };
   const remove = async (reId: number) => {
     await db.transaction("rw", db.routineExercises, db.setTemplates, async () => {
@@ -156,17 +165,23 @@ export function RoutineEdit({ id }: { id: number }) {
 
   return (
     <div>
-      <Header title={routine.name} onBack />
+      <Header title={routine.name} onBack
+        action={<button type="button" onClick={() => back("routines")} className="min-h-11 px-2 text-sm font-semibold text-plate-ink">Fertig</button>} />
       <BufferedText label="Name" value={routine.name} onCommit={(v) => v.trim() && db.routines.update(id, { name: v.trim() })} />
 
-      <div className="mt-5 grid gap-3">
-        {items.map(({ re, ex, tpls }, i) => (
-          <RoutineExerciseCard key={re.id} re={re} name={ex?.name ?? "Gelöschte Übung"} tpls={tpls} settings={settings}
-            open={open === re.id} onToggle={() => setOpen(open === re.id ? null : re.id!)}
-            onUp={i > 0 ? () => move(i, -1) : undefined} onDown={i < items.length - 1 ? () => move(i, 1) : undefined}
-            onRemove={() => remove(re.id!)} />
-        ))}
-      </div>
+      {items.length > 1 && <p className="mt-4 text-xs text-soft">Zum Umsortieren eine Übung am Griff ⠿ ziehen.</p>}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={items.map((x) => x.re.id!)} strategy={verticalListSortingStrategy}>
+          <div className={`${items.length > 1 ? "mt-2" : "mt-5"} grid gap-3`}>
+            {items.map(({ re, ex, tpls }, i) => (
+              <RoutineExerciseCard key={re.id} re={re} name={ex?.name ?? "Gelöschte Übung"} tpls={tpls} settings={settings}
+                open={open === re.id} onToggle={() => setOpen(open === re.id ? null : re.id!)}
+                onUp={i > 0 ? () => reorder(i, i - 1) : undefined} onDown={i < items.length - 1 ? () => reorder(i, i + 1) : undefined}
+                onRemove={() => remove(re.id!)} />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
       <Button variant="ghost" className="mt-3 w-full" onClick={() => setPicker(true)}>Übung hinzufügen</Button>
 
       <div className="mt-8 grid gap-2">
@@ -208,18 +223,25 @@ function RoutineExerciseCard({ re, name, tpls, settings, open, onToggle, onUp, o
   };
   const removeSet = (idx: number) => renumber(tpls.filter((_, i) => i !== idx).map(strip));
   const setOverride = (patch: Partial<RoutineExercise>) => db.routineExercises.update(re.id!, patch);
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: re.id! });
+  const style = { transform: transform ? `translate3d(0, ${transform.y}px, 0)` : undefined, transition };
 
   return (
-    <section className="rounded-xl border border-line bg-surface shadow-sm">
-      <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-3 p-3 text-left">
-        <span className="flex-1">
-          <span className="block font-semibold">{name}</span>
-          <span className="text-sm text-soft">
-            {warm ? `${warm} Aufwärmen + ` : ""}{work} × {min}–{max} Wdh., +{fmtInput(incVal)} {incType === "fixed" ? "kg" : "%"}
+    <section ref={setNodeRef} style={style}
+      className={`relative rounded-xl border bg-surface ${isDragging ? "z-10 border-plate/40 shadow-lg" : "border-line shadow-sm"}`}>
+      <div className="flex items-center">
+        <span ref={setActivatorNodeRef} {...listeners} {...attributes} aria-label={`${name} verschieben`}
+          className="no-callout flex h-14 w-10 shrink-0 cursor-grab touch-none items-center justify-center text-lg text-soft">⠿</span>
+        <button type="button" onClick={onToggle} aria-expanded={open} className="flex flex-1 items-center gap-3 py-3 pr-3 text-left">
+          <span className="flex-1">
+            <span className="block font-semibold">{name}</span>
+            <span className="text-sm text-soft">
+              {warm ? `${warm} Aufwärmen + ` : ""}{work} × {min}–{max} Wdh., +{fmtInput(incVal)} {incType === "fixed" ? "kg" : "%"}
+            </span>
           </span>
-        </span>
-        <span className="text-soft">{open ? "▴" : "▾"}</span>
-      </button>
+          <span className="text-soft">{open ? "▴" : "▾"}</span>
+        </button>
+      </div>
       {open && (
         <div className="border-t border-line p-3">
           <h3 className="mb-2 text-sm font-medium text-soft">Sätze</h3>

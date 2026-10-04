@@ -2,7 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../../db/db";
 import type { Routine } from "../../db/types";
 import { nameKey, type DraftRef } from "../../lib/presets";
-import { navigate } from "../../lib/router";
+import { navigate, rewriteCurrent } from "../../lib/router";
 import { useToday } from "../../lib/useToday";
 import { Card } from "../ui";
 import { Marker } from "../plan/Marker";
@@ -40,7 +40,7 @@ export function StepDone({ week, name }: { week: DraftRef[][]; name: string | nu
             <ul className="divide-y divide-line">
               {data.empty.map((r) => (
                 <li key={r.id}>
-                  <button type="button" onClick={() => navigate(`routine/${r.id}`)} className="flex min-h-12 w-full items-center gap-2 px-4 text-left text-sm">
+                  <button type="button" onClick={() => { rewriteCurrent("setup?step=done"); navigate(`routine/${r.id}`); }} className="flex min-h-12 w-full items-center gap-2 px-4 text-left text-sm">
                     <Marker kind="routine" /><span className="flex-1 font-medium">{r.name}</span>
                     <span className="text-xs font-semibold text-plate-ink">Übungen ›</span>
                   </button>

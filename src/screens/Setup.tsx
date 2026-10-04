@@ -28,7 +28,7 @@ export function Setup({ startAt }: { startAt?: string }) {
   const [draft, setDraft] = useState<SetupDraft | null>(null);
   const [about, setAbout] = useState<AboutForm>({ name: "", height: "", ageMode: "age", age: "", birthDate: "", weight: "" });
   const [preset, setPreset] = useState("hybrid");
-  const [step, setStep] = useState<Step>(startAt === "week" ? "preset" : "welcome");
+  const [step, setStep] = useState<Step>(startAt === "week" ? "preset" : startAt === "done" ? "done" : "welcome");
   const [presetWeek, setPresetWeek] = useState<DraftRef[][]>([]); // Woche aus dem Preset-Schritt, für „Überspringen“
   const [trail, setTrail] = useState<Step[]>([]);
   const [tried, setTried] = useState(false);

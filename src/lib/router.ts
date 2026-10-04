@@ -20,6 +20,11 @@ export function navigate(to: string, replace = false) {
   window.dispatchEvent(new HashChangeEvent("hashchange"));
 }
 
+/** Aktuellen Eintrag umschreiben, ohne neu zu rendern – damit „Zurück“ später hierher führt. */
+export function rewriteCurrent(to: string) {
+  history.replaceState(history.state, "", "#/" + to.replace(/^#?\/?/, ""));
+}
+
 export function back(fallback = "home") {
   if (depth > 0) history.back();
   else navigate(fallback, true);

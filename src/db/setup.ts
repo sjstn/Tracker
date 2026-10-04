@@ -42,7 +42,7 @@ export async function loadSetupDraft(database: AppDB = db): Promise<SetupStart> 
 
 /** Speichert den Entwurf in einer Transaktion; mehrfach ausgeführt entstehen keine Doppel. */
 export async function completeSetup(draft: SetupDraft, today = isoDate(), database: AppDB = db) {
-  const tables = [database.settings, database.bodyweight, database.routines, database.runPlans, database.planDays];
+  const tables = [database.settings, database.bodyweight, database.routines, database.runPlans, database.planDays, database.drafts];
   await database.transaction("rw", tables, async () => {
     const s = await getSettings(database);
     await database.settings.put({
