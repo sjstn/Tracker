@@ -12,13 +12,14 @@ import { Routines, RoutineEdit } from "./screens/Routines";
 import { Exercises, ExerciseDetail } from "./screens/Exercises";
 import { Workout } from "./screens/Workout";
 import { RunForm } from "./screens/RunForm";
+import { RunPlanEdit } from "./screens/RunPlanEdit";
 import { Profile } from "./screens/Profile";
 
 const TABS = [
   ["home", "Start"], ["routines", "Pläne"], ["exercises", "Übungen"], ["history", "Verlauf"], ["profile", "Ich"],
 ] as const;
 // Welcher Tab bei Unterseiten hervorgehoben wird
-const PARENT: Record<string, string> = { routine: "routines", exercise: "exercises", session: "history", run: "home" };
+const PARENT: Record<string, string> = { routine: "routines", exercise: "exercises", session: "history", run: "home", runplan: "routines" };
 
 export function App() {
   const { name, params } = useRoute();
@@ -37,6 +38,7 @@ export function App() {
     case "workout": screen = <Workout />; break;
     case "routines": screen = <Routines />; break;
     case "routine": screen = <RoutineEdit id={id!} key={id} />; break;
+    case "runplan": screen = <RunPlanEdit id={id!} key={id} />; break;
     case "exercises": screen = <Exercises />; break;
     case "exercise": screen = <ExerciseDetail id={id!} key={id} />; break;
     case "history": screen = <History />; break;

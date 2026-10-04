@@ -2,9 +2,13 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
 import { db, getSettings } from "../db/db";
 import { deleteRoutine, startWorkout } from "../db/repo";
+import { refInUse } from "../db/schedule";
 import type { RoutineExercise, SetTemplate, Settings } from "../db/types";
 import { ExercisePicker } from "../components/ExercisePicker";
-import { Button, Empty, Header, Input, NumberInput, Select, toast } from "../components/ui";
+import { WeekTemplateEditor } from "../components/plan/WeekTemplateEditor";
+import { Marker } from "../components/plan/Marker";
+import { Button, Card, Empty, Header, Input, NumberInput, Section, Select, toast } from "../components/ui";
+import { describeTarget } from "../lib/runTarget";
 import { fmtInput, num } from "../lib/format";
 import { navigate } from "../lib/router";
 
@@ -16,8 +20,10 @@ export function Routines() {
     res.forEach((r) => m.set(r.routineId, (m.get(r.routineId) ?? 0) + 1));
     return m;
   }, []);
+  const runPlans = useLiveQuery(() => db.runPlans.orderBy("order").toArray(), []);
   const [name, setName] = useState("");
-  if (!routines) return null;
+  const [runName, setRunName] = useState("");
+  if (!routines || !runPlans) return null;
 
   const create = async () => {
     const n = name.trim();
@@ -25,6 +31,13 @@ export function Routines() {
     const id = await db.routines.add({ name: n, order: routines.length });
     setName("");
     navigate(`routine/${id}`);
+  };
+  const createRunPlan = async () => {
+    const n = runName.trim();
+    if (!n) { toast("Gib der Laufart einen Namen, z. B. Longrun."); return; }
+    const id = await db.runPlans.add({ name: n, targetKind: "duration", targetValue: 45 * 60, paceMin: null, paceMax: null, order: runPlans.length });
+    setRunName("");
+    navigate(`runplan/${id}`);
   };
   const move = async (i: number, dir: -1 | 1) => {
     const j = i + dir;
@@ -38,30 +51,55 @@ export function Routines() {
   return (
     <div>
       <Header title="Pläne" />
-      <p className="mb-4 text-sm text-soft">Ein Plan legt fest, welche Übungen mit wie vielen Sätzen du machst. Beim Start schlägt die App Gewicht und Wiederholungen aus deinem letzten Training vor.</p>
-      {!routines.length && <Empty>Noch kein Plan. Leg unten deinen ersten an.</Empty>}
-      <ul className="grid gap-2">
-        {routines.map((r, i) => (
-          <li key={r.id} className="flex items-center gap-2 rounded-xl border border-line bg-surface p-2 pl-4 shadow-sm">
-            <button type="button" className="flex-1 py-2 text-left" onClick={() => navigate(`routine/${r.id}`)}>
-              <span className="block font-semibold">{r.name}</span>
-              <span className="text-sm text-soft">{counts?.get(r.id!) ?? 0} Übungen</span>
-            </button>
-            <div className="flex flex-col">
-              <button type="button" aria-label={`${r.name} nach oben`} disabled={i === 0} onClick={() => move(i, -1)} className="h-8 w-10 text-soft disabled:opacity-25">▲</button>
-              <button type="button" aria-label={`${r.name} nach unten`} disabled={i === routines.length - 1} onClick={() => move(i, 1)} className="h-8 w-10 text-soft disabled:opacity-25">▼</button>
-            </div>
-            <Button variant="plate" className="px-3" onClick={async () => {
-              if (await db.drafts.get("current")) { toast("Es läuft schon ein Training."); navigate("workout"); return; }
-              await startWorkout(r.id!); navigate("workout");
-            }}>Start</Button>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-6 flex gap-2">
-        <Input placeholder="Neuer Plan, z. B. Push" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} aria-label="Name des neuen Plans" />
-        <Button variant="primary" onClick={create}>Anlegen</Button>
-      </div>
+      <p className="mb-2 text-sm text-soft">Leg fest, an welchem Tag welches Training dran ist. Die App schlägt dir jeden Tag das passende vor und hilft beim Verschieben.</p>
+      <WeekTemplateEditor />
+      <Section title="Krafttraining">
+        {!routines.length && <Empty>Noch kein Plan. Leg unten deinen ersten an.</Empty>}
+        <ul className="grid gap-2">
+          {routines.map((r, i) => (
+            <li key={r.id} className="flex items-center gap-2 rounded-xl border border-line bg-surface p-2 pl-4 shadow-sm">
+              <button type="button" className="flex-1 py-2 text-left" onClick={() => navigate(`routine/${r.id}`)}>
+                <span className="block font-semibold">{r.name}</span>
+                <span className="text-sm text-soft">{counts?.get(r.id!) ?? 0} Übungen</span>
+              </button>
+              <div className="flex flex-col">
+                <button type="button" aria-label={`${r.name} nach oben`} disabled={i === 0} onClick={() => move(i, -1)} className="h-8 w-10 text-soft disabled:opacity-25">▲</button>
+                <button type="button" aria-label={`${r.name} nach unten`} disabled={i === routines.length - 1} onClick={() => move(i, 1)} className="h-8 w-10 text-soft disabled:opacity-25">▼</button>
+              </div>
+              <Button variant="plate" className="px-3" onClick={async () => {
+                if (await db.drafts.get("current")) { toast("Es läuft schon ein Training."); navigate("workout"); return; }
+                await startWorkout(r.id!); navigate("workout");
+              }}>Start</Button>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-6 flex gap-2">
+          <Input placeholder="Neuer Plan, z. B. Push" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} aria-label="Name des neuen Plans" />
+          <Button variant="primary" onClick={create}>Anlegen</Button>
+        </div>
+      </Section>
+      <Section title="Laufen">
+        {!runPlans.length && <Empty>Noch keine Laufart. Leg unten z. B. „Zone 2“ oder „Longrun“ an.</Empty>}
+        {runPlans.length > 0 && (
+          <Card>
+            <ul className="divide-y divide-line">
+              {runPlans.map((p) => (
+                <li key={p.id}>
+                  <button type="button" onClick={() => navigate(`runplan/${p.id}`)} className="flex min-h-13 w-full items-center gap-3 px-4 py-2 text-left">
+                    <Marker kind="runPlan" />
+                    <span className="flex-1 text-sm font-medium">{p.name}</span>
+                    <span className="text-xs text-soft">{describeTarget(p)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+        <div className="mt-3 flex gap-2">
+          <Input placeholder="Neue Laufart, z. B. Longrun" value={runName} onChange={(e) => setRunName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createRunPlan()} aria-label="Name der neuen Laufart" />
+          <Button variant="primary" onClick={createRunPlan}>Anlegen</Button>
+        </div>
+      </Section>
     </div>
   );
 }
@@ -107,7 +145,10 @@ export function RoutineEdit({ id }: { id: number }) {
     });
   };
   const removeRoutine = async () => {
-    if (!confirm(`Plan „${routine.name}“ löschen? Deine bisherigen Trainings und Gewichtsvorschläge bleiben erhalten.`)) return;
+    const inUse = await refInUse({ kind: "routine", id });
+    if (!confirm(inUse
+      ? `„${routine.name}“ steckt in deiner Woche und wird dort entfernt. Bisherige Trainings bleiben erhalten. Löschen?`
+      : `Plan „${routine.name}“ löschen? Deine bisherigen Trainings und Gewichtsvorschläge bleiben erhalten.`)) return;
     await deleteRoutine(id);
     toast("Plan gelöscht");
     navigate("routines", true);
