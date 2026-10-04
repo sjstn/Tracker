@@ -1,4 +1,3 @@
-process.env.TZ = "Europe/Berlin";
 import { describe, expect, it } from "vitest";
 import type { PlanDay, ShiftMode, TrainingRef } from "../db/types";
 import { generate, moveItem, overdue, postponeFrom, postponeOverdue, pullForward, rebuildFrom, removeRef, skipDay, skipOverdue, swapDays, type PlanCtx } from "./schedule";

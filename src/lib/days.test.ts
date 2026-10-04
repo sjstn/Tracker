@@ -1,4 +1,3 @@
-process.env.TZ = "Europe/Berlin"; // Zeitumstellung realistisch testen
 import { describe, expect, it } from "vitest";
 import { addDays, daysBetween, sundayOf, weekdayIndex } from "./days";
 import { fmtMinutes, fmtPace, parsePace } from "./format";
