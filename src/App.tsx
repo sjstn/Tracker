@@ -67,7 +67,7 @@ export function App() {
   return (
     <>
       <div id="scroller" className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <main className={`mx-auto max-w-xl px-4 ${name === "setup" ? "h-full pb-0" : name === "workout" ? "pb-0" : "pb-6"}`}>{screen}</main>
+        <main className={`mx-auto max-w-xl px-4 ${name === "setup" ? "h-full pb-0" : name === "workout" ? "flex min-h-full flex-col pb-0" : "pb-6"}`}>{screen}</main>
       </div>
       {!hideNav && (
         <nav aria-label="Hauptnavigation" className="shrink-0 border-t border-line bg-surface"
