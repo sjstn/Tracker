@@ -119,24 +119,31 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
   );
 }
 
-let toastSetter: ((m: string | null) => void) | null = null;
-export function toast(msg: string) { toastSetter?.(msg); }
+type ToastMsg = { text: string; action?: { label: string; run: () => void } };
+let toastSetter: ((m: ToastMsg | null) => void) | null = null;
+export function toast(text: string, action?: ToastMsg["action"]) { toastSetter?.({ text, action }); }
 export function Toaster() {
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<ToastMsg | null>(null);
   useEffect(() => {
     toastSetter = setMsg;
     return () => { toastSetter = null; };
   }, []);
   useEffect(() => {
     if (!msg) return;
-    const t = setTimeout(() => setMsg(null), 2400);
+    // Mit "Rückgängig" etwas länger stehen lassen
+    const t = setTimeout(() => setMsg(null), msg.action ? 5000 : 2400);
     return () => clearTimeout(t);
   }, [msg]);
   return (
     <div role="status" aria-live="polite"
-      className={`pointer-events-none fixed left-1/2 z-50 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-lg ring-1 ring-white/10 transition-opacity ${msg ? "opacity-100" : "opacity-0"}`}
+      className={`fixed left-1/2 z-50 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-4 rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-lg ring-1 ring-white/10 transition-opacity ${msg ? "opacity-100" : "pointer-events-none opacity-0"}`}
       style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)" }}>
-      {msg}
+      <span>{msg?.text}</span>
+      {msg?.action && (
+        <button type="button" className="font-semibold text-plate" onClick={() => { msg.action!.run(); setMsg(null); }}>
+          {msg.action.label}
+        </button>
+      )}
     </div>
   );
 }

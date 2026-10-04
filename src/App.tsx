@@ -2,7 +2,9 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect } from "react";
 import { db, getSettings, requestPersistence } from "./db/db";
 import { applyAppearance } from "./lib/appearance";
-import { Toaster } from "./components/ui";
+import { Toaster, toast } from "./components/ui";
+import { ensureHorizon } from "./db/schedule";
+import { useToday } from "./lib/useToday";
 import { navigate, useRoute } from "./lib/router";
 import { Home } from "./screens/Home";
 import { History, SessionDetail } from "./screens/History";
@@ -27,6 +29,8 @@ export function App() {
 
   useEffect(() => { requestPersistence(); }, []);
   useEffect(() => { if (settings) applyAppearance(settings); }, [settings?.accent, settings?.theme]);
+  const today = useToday();
+  useEffect(() => { ensureHorizon(today).catch(() => toast("Wochenplan konnte nicht geladen werden.")); }, [today]);
 
   let screen;
   switch (name) {
