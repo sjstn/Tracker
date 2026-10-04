@@ -1,4 +1,3 @@
-// src/screens/Setup.tsx
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
 import { completeSetup, loadSetupDraft, markSetupSeen, type SetupDraft, type SetupStart } from "../db/setup";
@@ -119,14 +118,18 @@ export function Setup({ startAt }: { startAt?: string }) {
 
   return (
     <div className="flex min-h-[calc(100dvh-1.5rem)] flex-col pt-4">
-      {no !== undefined && (
+      {step !== "done" && (
         <div className="flex items-center gap-2">
-          <button type="button" aria-label="Zurück" onClick={goBack}
+          <button type="button" aria-label="Zurück" disabled={busy} onClick={goBack}
             className="flex h-11 w-11 items-center justify-center rounded-lg text-2xl text-soft hover:bg-surface-2">‹</button>
-          <div className="h-1.5 flex-1 rounded-full bg-surface-2" role="progressbar" aria-label="Fortschritt" aria-valuemin={1} aria-valuemax={5} aria-valuenow={no}>
-            <div className="h-1.5 rounded-full bg-plate transition-all" style={{ width: `${no * 20}%` }} />
-          </div>
-          <span className="w-8 text-right text-xs text-soft tnum">{no}/5</span>
+          {no !== undefined ? (
+            <>
+              <div className="h-1.5 flex-1 rounded-full bg-surface-2" role="progressbar" aria-label="Fortschritt" aria-valuemin={1} aria-valuemax={5} aria-valuenow={no}>
+                <div className="h-1.5 rounded-full bg-plate transition-all" style={{ width: `${no * 20}%` }} />
+              </div>
+              <span className="w-8 text-right text-xs text-soft tnum">{no}/5</span>
+            </>
+          ) : <div className="flex-1" />}
         </div>
       )}
       <div className="flex-1 pt-4">
