@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   birthYear: null,
   setupSeen: false,
   weekCardHidden: false,
+  tourSeen: false,
 };
 
 export const MUSCLE_GROUPS = ["Brust", "Rücken", "Beine", "Schultern", "Arme", "Bauch"] as const;
@@ -103,6 +104,7 @@ export async function getSettings(database: AppDB = db): Promise<Settings> {
   if (typeof s.birthDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s.birthDate)) s.birthDate = null;
   s.setupSeen = s.setupSeen === true;
   s.weekCardHidden = s.weekCardHidden === true;
+  s.tourSeen = s.tourSeen === true;
   return s;
 }
 

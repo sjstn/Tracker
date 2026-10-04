@@ -96,4 +96,5 @@ async function patchSettings(patch: Partial<Settings>, database: AppDB) {
   });
 }
 export const markSetupSeen = (database: AppDB = db) => patchSettings({ setupSeen: true }, database);
+export const markTourSeen = (database: AppDB = db) => patchSettings({ tourSeen: true }, database);
 export const hideWeekCard = (database: AppDB = db) => patchSettings({ weekCardHidden: true }, database);

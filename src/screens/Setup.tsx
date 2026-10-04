@@ -1,5 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
+import { getSettings } from "../db/db";
 import { completeSetup, loadSetupDraft, markSetupSeen, type SetupDraft, type SetupStart } from "../db/setup";
 import { Button, toast } from "../components/ui";
 import { StepAbout } from "../components/setup/StepAbout";
@@ -94,7 +95,11 @@ export function Setup({ startAt }: { startAt?: string }) {
       setTried(true);
       if (Object.values(runErrors).some(hasErrors)) { toast("Bitte die markierten Felder prüfen."); return; }
       await finish(draft);
-    } else navigate("home", true);
+    } else {
+      // Einführung nur beim ersten Mal automatisch zeigen
+      const seen = await getSettings().then((s) => s.tourSeen, () => true);
+      navigate(seen ? "home" : "tour", true);
+    }
   };
   const skip = async () => {
     if (busy) return;
