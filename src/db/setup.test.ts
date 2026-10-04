@@ -2,7 +2,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { AppDB, getSettings } from "./db";
-import { completeSetup, hideWeekCard, isAppEmpty, loadSetupDraft, markSetupSeen, type SetupDraft } from "./setup";
+import { completeSetup, hideWeekCard, isAppEmpty, loadSetupDraft, markSetupSeen, markTourSeen, type SetupDraft } from "./setup";
 import { PRESETS } from "../lib/presets";
 import { addDays } from "../lib/days";
 import { isoDate } from "../lib/format";
@@ -114,5 +114,12 @@ describe("Assistent speichern", () => {
     await markSetupSeen(db);
     await hideWeekCard(db);
     expect(await getSettings(db)).toMatchObject({ setupSeen: true, weekCardHidden: true });
+  });
+
+  it("merkt sich, dass die Einführung gesehen wurde", async () => {
+    const db = await freshDb();
+    expect((await getSettings(db)).tourSeen).toBe(false);
+    await markTourSeen(db);
+    expect((await getSettings(db)).tourSeen).toBe(true);
   });
 });

@@ -34,12 +34,15 @@ export async function ensureHorizon(today = isoDate(), database: AppDB = db) {
   });
 }
 
-/** Musterwoche oder Modus speichern; ab morgen wird neu geplant, heute bleibt. */
+/** Musterwoche oder Modus speichern. Heute wird mit neu geplant, außer dort ist schon etwas erledigt, ausgelassen oder läuft gerade. */
 export async function saveWeekSetup(patch: { weekTemplate?: TrainingRef[][]; shiftMode?: ShiftMode }, today = isoDate(), database: AppDB = db) {
-  await database.transaction("rw", planTables(database), async () => {
+  await database.transaction("rw", [...planTables(database), database.drafts], async () => {
     await database.settings.put({ ...(await getSettings(database)), ...patch });
     const ctx = await planCtx(database);
-    let days = rebuildFrom(await database.planDays.toArray(), addDays(today, 1), ctx);
+    const todayDay = await database.planDays.get(today);
+    const running = (await database.drafts.get("current"))?.planItemId;
+    const touched = todayDay?.items.some((i) => i.status !== "planned" || i.id === running);
+    let days = rebuildFrom(await database.planDays.toArray(), touched ? addDays(today, 1) : today, ctx);
     if (hasTemplate(ctx)) days = generate(days, today, addDays(today, HORIZON_DAYS - 1), ctx);
     await database.planDays.bulkPut(days);
     undoSnapshot = null;

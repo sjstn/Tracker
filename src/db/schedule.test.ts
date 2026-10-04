@@ -87,6 +87,36 @@ describe("Plan-Speicher", () => {
     expect(await undoPlanChange(db)).toBe(false);
   });
 
+  it("geänderte Musterwoche plant heute neu, solange heute nichts begonnen ist", async () => {
+    const db = await freshDb();
+    const { push } = await withWeek(db);
+    const today = isoDate();
+    const only: TrainingRef[] = [{ kind: "routine", id: push }];
+    await saveWeekSetup({ weekTemplate: [only, only, only, only, only, only, only] }, today, db);
+    expect((await db.planDays.get(today))!.items.map((i) => i.label)).toEqual(["Push"]);
+  });
+
+  it("geänderte Musterwoche lässt heute stehen, wenn dort schon etwas erledigt ist", async () => {
+    const db = await freshDb();
+    const { push } = await withWeek(db);
+    const today = isoDate();
+    await setItemStatus((await db.planDays.get(today))!.items[1].id, "done", db);
+    const only: TrainingRef[] = [{ kind: "routine", id: push }];
+    await saveWeekSetup({ weekTemplate: [only, only, only, only, only, only, only] }, today, db);
+    expect((await db.planDays.get(today))!.items.map((i) => i.label)).toEqual(["Push", "Zone 2"]);
+    expect((await db.planDays.get(addDays(today, 1)))!.items.map((i) => i.label)).toEqual(["Push"]);
+  });
+
+  it("geänderte Musterwoche lässt heute stehen, solange dafür ein Training läuft", async () => {
+    const db = await freshDb();
+    const { push } = await withWeek(db);
+    const today = isoDate();
+    const item = (await db.planDays.get(today))!.items[0];
+    await startWorkout(push, db, { planItemId: item.id });
+    await saveWeekSetup({ weekTemplate: [[], [], [], [], [], [], []] }, today, db);
+    expect((await db.planDays.get(today))!.items.map((i) => i.id)).toContain(item.id);
+  });
+
   it("Laufart löschen räumt Musterwoche und offene Termine auf", async () => {
     const db = await freshDb();
     const { z2 } = await withWeek(db);

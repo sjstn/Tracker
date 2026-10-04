@@ -100,6 +100,10 @@ export function Profile() {
           <Button disabled={!!running} onClick={() => navigate("setup")}>Starten</Button>
         </Card>
         {running && <p className="mt-1.5 text-xs text-soft">Geht, sobald das laufende Training beendet ist.</p>}
+        <Card className="mt-2 flex items-center gap-3 p-4">
+          <p className="flex-1 text-sm text-soft">Kurz erklärt: Pläne anlegen, Übungen hinzufügen und verschieben, Woche planen.</p>
+          <Button onClick={() => navigate("tour?from=profile")}>Einführung</Button>
+        </Card>
       </Section>
 
       <Section title="Körpergewicht">

@@ -67,6 +67,8 @@ export interface Settings extends ProgressionFields {
   setupSeen: boolean;
   /** Karte „Woche einrichten?" wurde weggeklickt */
   weekCardHidden: boolean;
+  /** Einführung (Pläne, Übungen, Woche) wurde angesehen oder übersprungen */
+  tourSeen: boolean;
 }
 
 export interface Exercise {

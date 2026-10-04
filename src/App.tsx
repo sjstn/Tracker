@@ -17,6 +17,7 @@ import { Profile } from "./screens/Profile";
 import { Week } from "./screens/Week";
 import { isAppEmpty } from "./db/setup";
 import { Setup } from "./screens/Setup";
+import { Tour } from "./screens/Tour";
 
 const TABS = [
   ["home", "Start"], ["routines", "Pläne"], ["exercises", "Übungen"], ["history", "Verlauf"], ["profile", "Ich"],
@@ -59,19 +60,21 @@ export function App() {
     case "profile": screen = <Profile />; break;
     case "week": screen = <Week />; break;
     case "setup": screen = <Setup startAt={params.step} key={params.step ?? "all"} />; break;
+    case "tour": screen = <Tour from={params.from} />; break;
     default: screen = <Home />;
   }
   const active = PARENT[name] ?? name;
-  const hideNav = name === "workout" || name === "setup";
+  const hideNav = name === "workout" || name === "setup" || name === "tour";
 
   return (
     <>
       <div id="scroller" className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <main className={`mx-auto max-w-xl px-4 ${name === "setup" ? "h-full pb-0" : name === "workout" ? "flex min-h-full flex-col pb-0" : "pb-6"}`}>{screen}</main>
+        <main className={`mx-auto max-w-xl px-4 ${name === "setup" || name === "tour" ? "h-full pb-0" : name === "workout" ? "flex min-h-full flex-col pb-0" : "pb-6"}`}>{screen}</main>
       </div>
       {!hideNav && (
         <nav aria-label="Hauptnavigation" className="shrink-0 border-t border-line bg-surface"
-          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+          // Wie die iOS-Tab-Leiste: Beschriftung knapp über dem Home-Balken, nicht den vollen Sicherheitsabstand darunter
+          style={{ paddingBottom: "max(0.5rem, calc(env(safe-area-inset-bottom, 0px) - 1.125rem))" }}>
           {draft && (
             <button type="button" onClick={() => navigate("workout")}
               className="flex w-full items-center justify-between bg-plate px-4 py-2 text-sm font-semibold text-white">
@@ -81,7 +84,7 @@ export function App() {
           <div className="mx-auto grid max-w-xl grid-cols-5">
             {TABS.map(([r, label]) => (
               <button key={r} type="button" aria-current={active === r ? "page" : undefined} onClick={() => navigate(r)}
-                className={`min-h-15 border-t-2 text-sm font-medium ${active === r ? "border-plate text-plate-ink font-semibold" : "border-transparent text-soft"}`}>
+                className={`min-h-12 border-t-2 text-sm font-medium ${active === r ? "border-plate text-plate-ink font-semibold" : "border-transparent text-soft"}`}>
                 {label}
               </button>
             ))}

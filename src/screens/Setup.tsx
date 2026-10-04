@@ -1,5 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
+import { getSettings } from "../db/db";
 import { completeSetup, loadSetupDraft, markSetupSeen, type SetupDraft, type SetupStart } from "../db/setup";
 import { Button, toast } from "../components/ui";
 import { StepAbout } from "../components/setup/StepAbout";
@@ -28,7 +29,7 @@ export function Setup({ startAt }: { startAt?: string }) {
   const [draft, setDraft] = useState<SetupDraft | null>(null);
   const [about, setAbout] = useState<AboutForm>({ name: "", height: "", ageMode: "age", age: "", birthDate: "", weight: "" });
   const [preset, setPreset] = useState("hybrid");
-  const [step, setStep] = useState<Step>(startAt === "week" ? "preset" : "welcome");
+  const [step, setStep] = useState<Step>(startAt === "week" ? "preset" : startAt === "done" ? "done" : "welcome");
   const [presetWeek, setPresetWeek] = useState<DraftRef[][]>([]); // Woche aus dem Preset-Schritt, für „Überspringen“
   const [trail, setTrail] = useState<Step[]>([]);
   const [tried, setTried] = useState(false);
@@ -94,7 +95,11 @@ export function Setup({ startAt }: { startAt?: string }) {
       setTried(true);
       if (Object.values(runErrors).some(hasErrors)) { toast("Bitte die markierten Felder prüfen."); return; }
       await finish(draft);
-    } else navigate("home", true);
+    } else {
+      // Einführung nur beim ersten Mal automatisch zeigen
+      const seen = await getSettings().then((s) => s.tourSeen, () => true);
+      navigate(seen ? "home" : "tour", true);
+    }
   };
   const skip = async () => {
     if (busy) return;

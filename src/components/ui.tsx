@@ -94,25 +94,43 @@ export function Section({ title, children, action }: { title: string; children: 
   );
 }
 
-/** Bodensheet für Auswahllisten (z. B. Übung hinzufügen). */
+/** Sichtbarer Bereich über der Bildschirmtastatur; iOS verkleinert dafür nur den visualViewport, nicht das Layout. */
+function useVisibleArea(active: boolean) {
+  const [area, setArea] = useState<{ keyboard: number; height: number } | null>(null);
+  useEffect(() => {
+    const v = window.visualViewport;
+    if (!active || !v) return;
+    const on = () => setArea({ keyboard: Math.max(0, window.innerHeight - v.height - v.offsetTop), height: v.height });
+    on();
+    v.addEventListener("resize", on);
+    v.addEventListener("scroll", on);
+    return () => { v.removeEventListener("resize", on); v.removeEventListener("scroll", on); setArea(null); };
+  }, [active]);
+  return area;
+}
+
+/** Bodensheet für Auswahllisten (z. B. Übung hinzufügen). Sitzt immer über der Tastatur. */
 export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const area = useVisibleArea(open);
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
     if (open && !d.open) d.showModal();
     if (!open && d.open) d.close();
   }, [open]);
+  const maxHeight = area ? `${Math.round(area.height * 0.88)}px` : "88dvh";
   return (
     <dialog ref={ref} onClose={onClose} onClick={(e) => e.target === ref.current && onClose()}
-      className="m-0 mt-auto max-h-[88dvh] w-full max-w-none rounded-t-2xl border-0 bg-bg p-0 text-ink shadow-xl backdrop:bg-gray-950/50 sm:mx-auto sm:max-w-xl">
+      style={{ marginBottom: area?.keyboard || undefined, maxHeight }}
+      className="m-0 mt-auto w-full max-w-none rounded-t-2xl border-0 bg-bg p-0 text-ink shadow-xl backdrop:bg-gray-950/50 sm:mx-auto sm:max-w-xl">
       {open && (
-        <div className="flex max-h-[88dvh] flex-col">
+        <div className="flex flex-col" style={{ maxHeight }}>
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <h2 className="text-lg font-semibold">{title}</h2>
             <button type="button" onClick={onClose} className="min-h-11 px-2 text-sm font-semibold text-plate-ink">Fertig</button>
           </div>
-          <div className="overflow-y-auto px-4 pt-3 pb-safe" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>{children}</div>
+          <div className="overflow-y-auto px-4 pt-3 pb-safe" style={{ paddingBottom: area?.keyboard ? "1rem" : "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>{children}</div>
         </div>
       )}
     </dialog>

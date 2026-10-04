@@ -87,7 +87,7 @@ function ItemChip({ item, names, picked, onPick }: { item: PlanItem; names: Plan
   const name = itemName(names, item);
   return (
     <span ref={setNodeRef} style={style}
-      className={`relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${isDragging ? "z-10 bg-surface shadow-lg ring-1 ring-plate/40" : picked === item.id ? "bg-tint ring-1 ring-plate" : "bg-surface-2"} ${movable ? "" : "opacity-60"}`}>
+      className={`no-callout relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${isDragging ? "z-10 bg-surface shadow-lg ring-1 ring-plate/40" : picked === item.id ? "bg-tint ring-1 ring-plate" : "bg-surface-2"} ${movable ? "" : "opacity-60"}`}>
       <button type="button" aria-disabled={!movable} aria-pressed={picked === item.id}
         onClick={(e) => {
           // Ist schon etwas gewählt, gilt der Tipp dem Tag (Tauschen/Dazulegen), nicht dem Chip
@@ -101,7 +101,7 @@ function ItemChip({ item, names, picked, onPick }: { item: PlanItem; names: Plan
         {item.status === "done" && <span className="text-xs text-ok">✓ erledigt</span>}
         {item.status === "skipped" && <span className="text-xs text-soft">ausgelassen</span>}
       </button>
-      {movable && <span {...listeners} {...attributes} aria-label={`${name} ziehen`} className="touch-none px-1.5 py-1 text-soft">⠿</span>}
+      {movable && <span {...listeners} {...attributes} aria-label={`${name} ziehen`} className="touch-none px-2.5 py-1.5 text-soft">⠿</span>}
     </span>
   );
 }
