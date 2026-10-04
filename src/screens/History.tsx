@@ -2,7 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import type { ReactNode } from "react";
 import { db } from "../db/db";
 import { deleteSession } from "../db/repo";
-import { Button, Empty, Header, toast } from "../components/ui";
+import { Button, Card, Empty, Header, toast } from "../components/ui";
 import { clock, fmt, localDay, monthLabel, niceDate, pace } from "../lib/format";
 import { navigate } from "../lib/router";
 
@@ -50,16 +50,15 @@ function Row({ item }: { item: Item }) {
   return (
     <li>
       <button type="button" onClick={() => navigate(item.kind === "gym" ? `session/${item.id}` : `run/${item.id}`)}
-        className="grid w-full grid-cols-[4px_1fr] gap-3 border-b border-line py-3 text-left">
-        <span className={`rounded ${item.kind === "gym" ? "bg-plate" : "bg-track"}`} />
-        <span>
-          <span className="block font-semibold">
-            {item.title}
-            {item.kind === "gym" && item.pr && <span className="ml-2 rounded bg-pr px-1.5 py-0.5 align-[0.1em] font-display text-xs font-semibold text-[#1B2430]">Bestwert</span>}
-          </span>
-          <span className="block text-sm text-soft tnum">{item.meta}</span>
-          {item.detail && <span className="mt-0.5 block text-sm">{item.detail}</span>}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/60">
+        <span aria-hidden className={`h-2 shrink-0 rounded-full ${item.kind === "gym" ? "w-2 bg-plate" : "w-4 bg-track"}`} />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium">{item.title}</span>
+          <span className="block text-xs text-soft tnum">{item.meta}</span>
+          {item.detail && <span className="mt-0.5 block truncate text-xs text-soft">{item.detail}</span>}
         </span>
+        {item.kind === "gym" && item.pr && <span className="shrink-0 rounded-md bg-tint px-2 py-0.5 text-xs font-medium text-plate-ink ring-1 ring-inset ring-plate/30">Bestwert</span>}
+        <span aria-hidden className="text-soft">›</span>
       </button>
     </li>
   );
@@ -69,22 +68,28 @@ export function HistoryList({ limit, empty }: { limit?: number; empty: ReactNode
   const items = useLiveQuery(() => loadItems(limit), [limit]);
   if (!items) return null;
   if (!items.length) return <>{empty}</>;
-  return <ul>{items.map((i) => <Row key={i.kind + i.id} item={i} />)}</ul>;
+  return <Card><ul className="divide-y divide-line">{items.map((i) => <Row key={i.kind + i.id} item={i} />)}</ul></Card>;
 }
 
 export function History() {
   const items = useLiveQuery(() => loadItems(), []);
   if (!items) return null;
-  let month = "";
+  const months: [string, Item[]][] = [];
+  for (const i of items) {
+    const m = monthLabel(i.day);
+    if (months[months.length - 1]?.[0] !== m) months.push([m, []]);
+    months[months.length - 1][1].push(i);
+  }
   return (
     <div>
       <Header title="Verlauf" />
       {!items.length && <Empty>Hier erscheinen alle Trainings und Läufe, sobald du welche einträgst.</Empty>}
-      {items.map((i) => {
-        const m = monthLabel(i.day);
-        const head = m !== month ? ((month = m), <h2 key={"m" + m} className="mt-5 font-display text-lg font-semibold text-soft">{m}</h2>) : null;
-        return <div key={i.kind + i.id}>{head}<ul><Row item={i} /></ul></div>;
-      })}
+      {months.map(([m, list]) => (
+        <section key={m}>
+          <h2 className="mt-5 mb-2 text-sm font-medium text-soft">{m}</h2>
+          <Card><ul className="divide-y divide-line">{list.map((i) => <Row key={i.kind + i.id} item={i} />)}</ul></Card>
+        </section>
+      ))}
     </div>
   );
 }
@@ -112,23 +117,23 @@ export function SessionDetail({ id }: { id: number }) {
   return (
     <div>
       <Header title={session.routineName ?? "Freies Training"} onBack />
-      <p className="text-soft">
+      <p className="text-sm text-soft">
         {new Date(session.performedAt).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}
         {", "}{new Date(session.performedAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr
         {session.durationSeconds ? `, ${Math.round(session.durationSeconds / 60)} min` : ""}
       </p>
       {groups!.map(({ l, ex, sets }) => (
-        <section key={l.id} className="mt-4 rounded-xl border-l-4 border-plate bg-surface p-4">
+        <Card key={l.id} className="mt-4 p-4">
           <button type="button" className="font-semibold" onClick={() => ex && navigate(`exercise/${ex.id}`)}>{ex?.name ?? "Gelöschte Übung"}</button>
           <ol className="mt-2 grid gap-1">
             {sets.map((s) => (
               <li key={s.id} className="flex gap-3 tnum">
-                <span className="w-6 text-center font-display font-semibold text-soft">{s.isWarmup ? "A" : s.slotNumber}</span>
+                <span className="w-6 text-center text-sm font-medium text-soft">{s.isWarmup ? "A" : s.slotNumber}</span>
                 <span className={s.isWarmup ? "text-soft" : ""}>{fmt(s.weight, 2)} kg × {s.reps}</span>
               </li>
             ))}
           </ol>
-        </section>
+        </Card>
       ))}
       {session.notes && <p className="mt-4 whitespace-pre-wrap">{session.notes}</p>}
       <div className="mt-8"><Button variant="danger" className="w-full" onClick={remove}>Training löschen</Button></div>

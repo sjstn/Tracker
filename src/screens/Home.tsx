@@ -1,7 +1,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
 import { startWorkout } from "../db/repo";
-import { Button, Empty, Section } from "../components/ui";
+import { Button, Card, Empty, Section } from "../components/ui";
 import { fmt, isoDate, localDay, weekDays } from "../lib/format";
 import { navigate } from "../lib/router";
 import { HistoryList } from "./History";
@@ -37,9 +37,11 @@ export function Home() {
 
   return (
     <div>
-      <h1 className="mt-4 font-display text-4xl font-bold">Diese Woche</h1>
+      <p className="mt-6 text-sm text-soft">{new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}</p>
+      <h1 className="text-2xl font-semibold tracking-tight">Diese Woche</h1>
 
-      <div className="mt-3 grid grid-cols-7 border-y-2 border-ink" role="group" aria-label="Wochenübersicht">
+      <Card className="mt-4 p-2">
+      <div className="grid grid-cols-7 gap-1" role="group" aria-label="Wochenübersicht">
         {days.map((d, i) => {
           const iso = isoDate(d);
           const gym = weekSessions.filter((s) => localDay(s.performedAt) === iso).length;
@@ -47,29 +49,30 @@ export function Home() {
           const isToday = iso === today;
           return (
             <div key={iso} aria-label={`${DAYS[i]} ${d.getDate()}.: ${gym} Kraft, ${run} Lauf`}
-              className={`flex min-h-28 flex-col items-center gap-1 border-l border-line py-2 first:border-l-0 ${isToday ? "bg-surface" : ""}`}>
-              <span className={`font-display text-sm font-semibold ${isToday ? "text-ink" : "text-soft"}`}>{DAYS[i]}</span>
-              <span className={`font-display text-2xl font-semibold leading-none ${isToday ? "" : "text-soft"}`}>{d.getDate()}</span>
+              className={`flex min-h-20 flex-col items-center gap-0.5 rounded-lg py-2 ${isToday ? "bg-tint ring-1 ring-plate/30" : ""}`}>
+              <span className={`text-xs font-medium ${isToday ? "text-plate-ink" : "text-soft"}`}>{DAYS[i]}</span>
+              <span className={`text-base font-semibold ${isToday ? "text-plate-ink" : ""}`}>{d.getDate()}</span>
               <span className="mt-1 flex flex-col items-center gap-1">
-                {[...Array(gym)].map((_, k) => <span key={"g" + k} className="h-[18px] w-[18px] rounded-full border-[5px] border-plate bg-surface" />)}
-                {[...Array(run)].map((_, k) => <span key={"r" + k} className="h-[7px] w-[22px] rounded bg-track" />)}
+                {[...Array(gym)].map((_, k) => <span key={"g" + k} className="h-2 w-2 rounded-full bg-plate" />)}
+                {[...Array(run)].map((_, k) => <span key={"r" + k} className="h-2 w-4 rounded-full bg-track" />)}
               </span>
             </div>
           );
         })}
       </div>
+      </Card>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-3 gap-2">
         <Stat value={String(weekSessions.length + runs.length)} label="Einheiten" />
-        <Stat value={`${fmt(volume / 1000, 1)} t`} label="bewegt" className="text-plate-ink" />
-        <Stat value={`${fmt(km, 1)} km`} label="gelaufen" className="text-track-ink" />
+        <Stat value={`${fmt(volume / 1000, 1)} t`} label="bewegt" />
+        <Stat value={`${fmt(km, 1)} km`} label="gelaufen" />
       </div>
 
       {draft ? (
         <button type="button" onClick={() => navigate("workout")}
-          className="mt-5 flex w-full items-center justify-between rounded-xl bg-plate px-4 py-4 text-left text-white">
+          className="mt-5 flex w-full items-center justify-between rounded-xl bg-plate px-4 py-4 text-left text-white shadow-sm">
           <span>
-            <span className="block font-display text-xl font-bold">Training läuft</span>
+            <span className="block text-base font-semibold">Training läuft</span>
             <span className="text-sm opacity-85">{draft.routineName ?? "Freies Training"}, seit {new Date(draft.startedAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr</span>
           </span>
           <span className="font-semibold">Weiter</span>
@@ -78,11 +81,11 @@ export function Home() {
         <Section title="Training starten">
           <div className="grid gap-2">
             {routines.map((r) => (
-              <Button key={r.id} variant="plate" className="justify-start text-lg" onClick={() => begin(r.id!)}>{r.name}</Button>
+              <Button key={r.id} variant="plate" className="justify-between! text-base" onClick={() => begin(r.id!)}>{r.name}<span aria-hidden className="opacity-80">›</span></Button>
             ))}
             <div className="grid grid-cols-2 gap-2">
               <Button onClick={() => begin(null)}>Freies Training</Button>
-              <Button variant="track" onClick={() => navigate("run")}>Lauf eintragen</Button>
+              <Button onClick={() => navigate("run")}>Lauf eintragen</Button>
             </div>
             {!routines.length && <p className="text-sm text-soft">Leg unter „Pläne“ dein erstes Trainingsprogramm an, dann startest du es hier mit einem Tipp und bekommst Gewichtsvorschläge.</p>}
           </div>
@@ -98,9 +101,9 @@ export function Home() {
 
 function Stat({ value, label, className = "" }: { value: string; label: string; className?: string }) {
   return (
-    <div>
-      <b className={`block font-display text-3xl font-bold leading-none tnum ${className}`}>{value}</b>
-      <span className="text-sm text-soft">{label}</span>
-    </div>
+    <Card className="p-3">
+      <span className="block text-xs font-medium text-soft">{label}</span>
+      <b className={`mt-0.5 block text-lg font-semibold tracking-tight tnum ${className}`}>{value}</b>
+    </Card>
   );
 }

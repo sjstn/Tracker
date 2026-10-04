@@ -1,38 +1,53 @@
 @import "tailwindcss";
-@import "@fontsource/barlow/400.css";
-@import "@fontsource/barlow/500.css";
-@import "@fontsource/barlow/600.css";
-@import "@fontsource/barlow-condensed/600.css";
-@import "@fontsource/barlow-condensed/700.css";
+@import "@fontsource-variable/inter";
 
-/* Farbwelt: Hantelscheiben-Blau für Kraft, Tartanbahn-Rot für Laufen,
-   Wettkampf-Gelb ausschließlich für Bestleistungen. Dunkel als Standard (Studio-Licht, OLED). */
-:root {
-  --bg: #12171E;
-  --surface: #1C232D;
-  --surface-2: #252E3A;
-  --ink: #E8ECF0;
-  --ink-soft: #9AA5B1;
-  --line: #2E3946;
-  --plate: #3D63D6;
-  --plate-ink: #8FAEFF;
-  --track: #D94A3A;
-  --track-ink: #F08273;
-  --pr: #F2B705;
-  --ok: #3FA66B;
-  color-scheme: dark;
+/* Stil nach Filament/Tailwind UI: graue Flächen, weiße Karten, eine Akzentfarbe.
+   Die Akzentfarbe wählt man unter „Ich“ (data-accent), Kraft nutzt den vollen Ton, Laufen einen helleren. */
+:root, [data-accent="amber"] {
+  --a-50: #fffbeb; --a-100: #fef3c7; --a-300: #fcd34d; --a-400: #fbbf24; --a-500: #f59e0b; --a-600: #d97706; --a-700: #b45309;
 }
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #E9ECEF; --surface: #FFFFFF; --surface-2: #F3F5F7; --ink: #1B2430; --ink-soft: #5A6573;
-    --line: #CDD3DA; --plate: #2348A8; --plate-ink: #2348A8; --track: #B8382B; --track-ink: #B8382B; --ok: #2E8554;
-    color-scheme: light;
+[data-accent="indigo"] {
+  --a-50: #eef2ff; --a-100: #e0e7ff; --a-300: #a5b4fc; --a-400: #818cf8; --a-500: #6366f1; --a-600: #4f46e5; --a-700: #4338ca;
+}
+[data-accent="emerald"] {
+  --a-50: #ecfdf5; --a-100: #d1fae5; --a-300: #6ee7b7; --a-400: #34d399; --a-500: #10b981; --a-600: #059669; --a-700: #047857;
+}
+[data-accent="rose"] {
+  --a-50: #fff1f2; --a-100: #ffe4e6; --a-300: #fda4af; --a-400: #fb7185; --a-500: #f43f5e; --a-600: #e11d48; --a-700: #be123c;
+}
+
+:root {
+  --bg: #f9fafb;          /* gray-50 */
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;   /* gray-100 */
+  --ink: #030712;         /* gray-950 */
+  --ink-soft: #6b7280;    /* gray-500 */
+  --line: #e5e7eb;        /* gray-200 */
+  --plate: var(--a-500);
+  --plate-ink: var(--a-600);
+  --track: var(--a-300);
+  --track-ink: var(--a-700);
+  --tint: var(--a-50);
+  --pr: var(--a-500);
+  --ok: #059669;
+  --danger: #dc2626;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #030712; --surface: #111827; --surface-2: #1f2937; --ink: #ffffff; --ink-soft: #9ca3af;
+    --line: rgb(255 255 255 / 0.1);
+    --plate-ink: var(--a-400); --track-ink: var(--a-300); --tint: color-mix(in srgb, var(--a-500) 15%, transparent);
+    --ok: #34d399; --danger: #f87171;
+    color-scheme: dark;
   }
 }
-:root[data-theme="light"] {
-  --bg: #E9ECEF; --surface: #FFFFFF; --surface-2: #F3F5F7; --ink: #1B2430; --ink-soft: #5A6573;
-  --line: #CDD3DA; --plate: #2348A8; --plate-ink: #2348A8; --track: #B8382B; --track-ink: #B8382B; --ok: #2E8554;
-  color-scheme: light;
+:root[data-theme="dark"] {
+  --bg: #030712; --surface: #111827; --surface-2: #1f2937; --ink: #ffffff; --ink-soft: #9ca3af;
+  --line: rgb(255 255 255 / 0.1);
+  --plate-ink: var(--a-400); --track-ink: var(--a-300); --tint: color-mix(in srgb, var(--a-500) 15%, transparent);
+  --ok: #34d399; --danger: #f87171;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -46,10 +61,11 @@
   --color-plate-ink: var(--plate-ink);
   --color-track: var(--track);
   --color-track-ink: var(--track-ink);
+  --color-tint: var(--tint);
   --color-pr: var(--pr);
   --color-ok: var(--ok);
-  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
-  --font-sans: "Barlow", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --color-danger: var(--danger);
+  --font-sans: "Inter Variable", -apple-system, "Segoe UI", system-ui, sans-serif;
 }
 
 :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); }

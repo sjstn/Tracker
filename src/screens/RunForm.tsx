@@ -45,22 +45,22 @@ export function RunForm({ id }: { id?: number }) {
         <Field label="Distanz in km"><NumberInput value={km} onChange={setKm} placeholder="5,0" className="tnum" /></Field>
       </div>
       <fieldset className="mt-4">
-        <legend className="mb-1 text-sm font-medium text-soft">Zeit</legend>
+        <legend className="mb-1.5 text-sm font-medium">Zeit</legend>
         <div className="grid grid-cols-3 gap-2">
           <NumberInput decimal={false} aria-label="Stunden" placeholder="Std" value={h} onChange={setH} className="tnum" />
           <NumberInput decimal={false} aria-label="Minuten" placeholder="Min" value={m} onChange={setM} className="tnum" />
           <NumberInput decimal={false} aria-label="Sekunden" placeholder="Sek" value={s} onChange={setS} className="tnum" />
         </div>
       </fieldset>
-      <p className="mt-5 font-display text-5xl font-bold text-track-ink tnum" aria-live="polite">
-        {pace(seconds, distance)}<span className="ml-2 font-sans text-base font-medium text-soft">min/km</span>
+      <p className="mt-5 rounded-xl border border-line bg-surface p-4 text-4xl font-semibold tracking-tight text-plate-ink shadow-sm tnum" aria-live="polite">
+        {pace(seconds, distance)}<span className="ml-2 text-base font-medium tracking-normal text-soft">min/km</span>
       </p>
       <Field label="Notiz" className="mt-5">
         <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Strecke, Gefühl, Wetter"
-          className="w-full rounded-lg border border-line bg-surface p-3 text-ink placeholder:text-soft/70" />
+          className="w-full rounded-lg border border-line bg-surface p-3 text-ink shadow-sm outline-none placeholder:text-soft/70 focus:border-plate focus:ring-2 focus:ring-plate/30" />
       </Field>
       <div className="mt-6 grid gap-2">
-        <Button variant="track" className="text-lg" onClick={save}>Lauf speichern</Button>
+        <Button variant="plate" className="text-base" onClick={save}>Lauf speichern</Button>
         {id && <Button variant="danger" onClick={remove}>Lauf löschen</Button>}
       </div>
     </div>

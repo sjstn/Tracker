@@ -1,6 +1,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect } from "react";
-import { db, requestPersistence } from "./db/db";
+import { db, getSettings, requestPersistence } from "./db/db";
+import { applyAppearance } from "./lib/appearance";
 import { Toaster } from "./components/ui";
 import { navigate, useRoute } from "./lib/router";
 import { Home } from "./screens/Home";
@@ -22,7 +23,10 @@ export function App() {
   const draft = useLiveQuery(() => db.drafts.get("current"), []);
   const id = params.id ? Number(params.id) : undefined;
 
+  const settings = useLiveQuery(() => getSettings(), []);
+
   useEffect(() => { requestPersistence(); }, []);
+  useEffect(() => { if (settings) applyAppearance(settings); }, [settings?.accent, settings?.theme]);
 
   let screen;
   switch (name) {
@@ -44,7 +48,7 @@ export function App() {
     <>
       <main className="mx-auto max-w-xl px-4 pb-28">{screen}</main>
       {!inWorkout && (
-        <nav aria-label="Hauptnavigation" className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 backdrop-blur"
+        <nav aria-label="Hauptnavigation" className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/90 backdrop-blur"
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           {draft && (
             <button type="button" onClick={() => navigate("workout")}
@@ -55,7 +59,7 @@ export function App() {
           <div className="mx-auto grid max-w-xl grid-cols-5">
             {TABS.map(([r, label]) => (
               <button key={r} type="button" aria-current={active === r ? "page" : undefined} onClick={() => navigate(r)}
-                className={`min-h-15 border-t-[3px] font-display text-base font-semibold ${active === r ? "border-ink text-ink" : "border-transparent text-soft"}`}>
+                className={`min-h-15 border-t-2 text-sm font-medium ${active === r ? "border-plate text-plate-ink font-semibold" : "border-transparent text-soft"}`}>
                 {label}
               </button>
             ))}

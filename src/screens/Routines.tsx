@@ -38,13 +38,13 @@ export function Routines() {
   return (
     <div>
       <Header title="Pläne" />
-      <p className="mb-4 text-soft">Ein Plan legt fest, welche Übungen mit wie vielen Sätzen du machst. Beim Start schlägt die App Gewicht und Wiederholungen aus deinem letzten Training vor.</p>
+      <p className="mb-4 text-sm text-soft">Ein Plan legt fest, welche Übungen mit wie vielen Sätzen du machst. Beim Start schlägt die App Gewicht und Wiederholungen aus deinem letzten Training vor.</p>
       {!routines.length && <Empty>Noch kein Plan. Leg unten deinen ersten an.</Empty>}
       <ul className="grid gap-2">
         {routines.map((r, i) => (
-          <li key={r.id} className="flex items-center gap-2 rounded-xl bg-surface p-2 pl-4">
+          <li key={r.id} className="flex items-center gap-2 rounded-xl border border-line bg-surface p-2 pl-4 shadow-sm">
             <button type="button" className="flex-1 py-2 text-left" onClick={() => navigate(`routine/${r.id}`)}>
-              <span className="block font-display text-xl font-semibold">{r.name}</span>
+              <span className="block font-semibold">{r.name}</span>
               <span className="text-sm text-soft">{counts?.get(r.id!) ?? 0} Übungen</span>
             </button>
             <div className="flex flex-col">
@@ -169,7 +169,7 @@ function RoutineExerciseCard({ re, name, tpls, settings, open, onToggle, onUp, o
   const setOverride = (patch: Partial<RoutineExercise>) => db.routineExercises.update(re.id!, patch);
 
   return (
-    <section className="rounded-xl border-l-4 border-plate bg-surface">
+    <section className="rounded-xl border border-line bg-surface shadow-sm">
       <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-3 p-3 text-left">
         <span className="flex-1">
           <span className="block font-semibold">{name}</span>
@@ -260,7 +260,7 @@ export function BufferedText({ label, value, onCommit }: { label: string; value:
   useEffect(() => setV(value), [value]);
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-soft">{label}</span>
+      <span className="mb-1.5 block text-sm font-medium">{label}</span>
       <Input value={v} onChange={(e) => setV(e.target.value)} onBlur={() => onCommit(v)} />
     </label>
   );

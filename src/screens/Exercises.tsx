@@ -2,7 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
 import { db, MUSCLE_GROUPS } from "../db/db";
 import { exerciseInUse } from "../db/repo";
-import { Button, Empty, Header, Input, Section, Select, toast } from "../components/ui";
+import { Button, Card, Empty, Header, Input, Section, Select, toast } from "../components/ui";
 import { LineChart } from "../components/LineChart";
 import { fmt, niceDate } from "../lib/format";
 import { estimatedOneRepMax } from "../lib/progression";
@@ -40,7 +40,7 @@ export function Exercises() {
         <Select aria-label="Nach Muskelgruppe filtern" value={group} onChange={setGroup} options={[["", "Alle"], ...MUSCLE_GROUPS.map((g) => [g, g] as [string, string])]} />
       </div>
       {q.trim() && !exact && (
-        <div className="mt-3 rounded-xl bg-surface p-3">
+        <div className="mt-3 rounded-xl border border-line bg-surface p-3 shadow-sm">
           <p className="mb-2 text-sm text-soft">„{q.trim()}“ als eigene Übung anlegen</p>
           <div className="flex gap-2">
             <div className="flex-1"><Select aria-label="Muskelgruppe" value={newGroup} onChange={setNewGroup} options={MUSCLE_GROUPS.map((g) => [g, g])} /></div>
@@ -48,17 +48,17 @@ export function Exercises() {
           </div>
         </div>
       )}
-      <ul className="mt-3">
+      {list.length > 0 && <Card className="mt-3"><ul className="divide-y divide-line">
         {list.map((e) => (
           <li key={e.id}>
-            <button type="button" onClick={() => navigate(`exercise/${e.id}`)} className="flex min-h-13 w-full items-center gap-3 border-b border-line py-2 text-left">
+            <button type="button" onClick={() => navigate(`exercise/${e.id}`)} className="flex min-h-13 w-full items-center gap-3 px-4 py-2 text-left hover:bg-surface-2/60">
               <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${trained?.has(e.id!) ? "bg-plate" : "border border-line"}`} aria-hidden />
-              <span className="flex-1">{e.name}</span>
-              <span className="text-sm text-soft">{e.custom ? "eigene · " : ""}{e.muscleGroup}</span>
+              <span className="flex-1 text-sm font-medium">{e.name}</span>
+              <span className="text-xs text-soft">{e.custom ? "eigene · " : ""}{e.muscleGroup}</span>
             </button>
           </li>
         ))}
-      </ul>
+      </ul></Card>}
       {!list.length && !q && <Empty>Keine Übungen in dieser Gruppe.</Empty>}
     </div>
   );
@@ -96,35 +96,35 @@ export function ExerciseDetail({ id }: { id: number }) {
   return (
     <div>
       <Header title={exercise.name} onBack />
-      <p className="text-soft">{exercise.muscleGroup}{exercise.custom ? ", eigene Übung" : ""}</p>
+      <p className="text-sm text-soft">{exercise.muscleGroup}{exercise.custom ? ", eigene Übung" : ""}</p>
 
       {sessions.length ? (
         <>
           <div className="mt-4 grid grid-cols-3 gap-2">
-            <div><b className="block font-display text-3xl font-bold leading-none text-pr tnum">{fmt(best, 2)}</b><span className="text-sm text-soft">kg Bestwert</span></div>
-            <div><b className="block font-display text-3xl font-bold leading-none tnum">{fmt(bestE1rm, 1)}</b><span className="text-sm text-soft">kg geschätztes 1RM</span></div>
-            <div><b className="block font-display text-3xl font-bold leading-none tnum">{sessions.length}</b><span className="text-sm text-soft">Trainings</span></div>
+            <Card className="p-3"><span className="block text-xs font-medium text-soft">Bestwert</span><b className="mt-0.5 block text-lg font-semibold tracking-tight text-plate-ink tnum">{fmt(best, 2)} kg</b></Card>
+            <Card className="p-3"><span className="block text-xs font-medium text-soft">gesch. 1RM</span><b className="mt-0.5 block text-lg font-semibold tracking-tight tnum">{fmt(bestE1rm, 1)} kg</b></Card>
+            <Card className="p-3"><span className="block text-xs font-medium text-soft">Trainings</span><b className="mt-0.5 block text-lg font-semibold tracking-tight tnum">{sessions.length}</b></Card>
           </div>
           <Section title="Verlauf" action={
-            <div className="flex gap-1 text-sm" role="group" aria-label="Kennzahl">
+            <div className="flex gap-0.5 rounded-lg bg-surface-2 p-0.5 text-xs font-medium" role="group" aria-label="Kennzahl">
               {(["top", "e1rm"] as const).map((m) => (
                 <button key={m} type="button" aria-pressed={metric === m} onClick={() => setMetric(m)}
-                  className={`rounded-md px-2 py-1 ${metric === m ? "bg-surface-2 font-semibold" : "text-soft"}`}>{m === "top" ? "Schwerster Satz" : "1RM"}</button>
+                  className={`rounded-md px-2.5 py-1.5 ${metric === m ? "bg-surface shadow-sm" : "text-soft"}`}>{m === "top" ? "Schwerster Satz" : "1RM"}</button>
               ))}
             </div>}>
-            <LineChart points={points} unit="kg" />
+            <Card className="p-3"><LineChart points={points} unit="kg" /></Card>
           </Section>
           <Section title="Alle Trainings">
-            <ul>
+            <Card><ul className="divide-y divide-line">
               {sessions.map((s) => (
                 <li key={s.sid}>
-                  <button type="button" onClick={() => navigate(`session/${s.sid}`)} className="w-full border-b border-line py-2.5 text-left">
-                    <span className="block text-sm text-soft">{niceDate(s.date)}</span>
-                    <span className="tnum">{s.sets.map((x) => `${fmt(x.weight, 2)}×${x.reps}`).join("  ")}</span>
+                  <button type="button" onClick={() => navigate(`session/${s.sid}`)} className="w-full px-4 py-2.5 text-left hover:bg-surface-2/60">
+                    <span className="block text-xs text-soft">{niceDate(s.date)}</span>
+                    <span className="text-sm font-medium tnum">{s.sets.map((x) => `${fmt(x.weight, 2)}×${x.reps}`).join("  ")}</span>
                   </button>
                 </li>
               ))}
-            </ul>
+            </ul></Card>
           </Section>
         </>
       ) : (
@@ -136,7 +136,7 @@ export function ExerciseDetail({ id }: { id: number }) {
           <div className="grid gap-3">
             <BufferedText label="Name" value={exercise.name} onCommit={(v) => v.trim() && db.exercises.update(id, { name: v.trim() })} />
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-soft">Muskelgruppe</span>
+              <span className="mb-1.5 block text-sm font-medium">Muskelgruppe</span>
               <Select value={exercise.muscleGroup} onChange={(v) => db.exercises.update(id, { muscleGroup: v })} options={MUSCLE_GROUPS.map((g) => [g, g])} />
             </label>
             <Button variant="danger" onClick={remove}>Übung löschen</Button>

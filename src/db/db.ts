@@ -16,6 +16,8 @@ export const DEFAULT_SETTINGS: Settings = {
   warmupValue: 50,
   weightRounding: 2.5,
   restSeconds: 120,
+  accent: "amber",
+  theme: "system",
 };
 
 export const MUSCLE_GROUPS = ["Brust", "Rücken", "Beine", "Schultern", "Arme", "Bauch"] as const;

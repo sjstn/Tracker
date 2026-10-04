@@ -4,6 +4,8 @@
 export type IncrementType = "fixed" | "percent";
 export type WarmupScheme = "percent_of_working" | "fixed_weight";
 export type SetType = "warmup" | "working";
+export type Accent = "amber" | "indigo" | "emerald" | "rose";
+export type ThemeMode = "system" | "light" | "dark";
 
 /** Die sechs Progressionsfelder, überall gleich benannt. */
 export interface ProgressionFields {
@@ -22,6 +24,8 @@ export interface Settings extends ProgressionFields {
   /** Auf dieses Raster werden berechnete Gewichte gerundet (Prozent-Steigerung, Aufwärmsätze). */
   weightRounding: number;
   restSeconds: number;
+  accent: Accent;
+  theme: ThemeMode;
 }
 
 export interface Exercise {
