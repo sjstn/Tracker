@@ -43,7 +43,7 @@ export function App() {
     case "exercise": screen = <ExerciseDetail id={id!} key={id} />; break;
     case "history": screen = <History />; break;
     case "session": screen = <SessionDetail id={id!} key={id} />; break;
-    case "run": screen = <RunForm id={id} key={id ?? "new"} />; break;
+    case "run": screen = <RunForm id={id} itemId={params.item} key={id ?? params.item ?? "new"} />; break;
     case "profile": screen = <Profile />; break;
     default: screen = <Home />;
   }
