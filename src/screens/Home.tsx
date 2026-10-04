@@ -45,7 +45,10 @@ export function Home() {
 
   return (
     <div>
-      <p className="mt-6 text-sm text-soft">{new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}</p>
+      <p className="mt-6 text-sm text-soft">
+        {settings.name && <><span className="font-medium text-ink">Hallo, {settings.name}</span> · </>}
+        {parseDay(today).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}
+      </p>
       <h1 className="text-2xl font-semibold tracking-tight">Diese Woche</h1>
 
       <Card className="mt-4 p-2">

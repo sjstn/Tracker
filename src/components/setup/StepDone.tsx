@@ -8,7 +8,7 @@ import { Card } from "../ui";
 import { Marker } from "../plan/Marker";
 import { itemName, usePlanNames } from "../plan/names";
 
-export function StepDone({ week }: { week: DraftRef[][] }) {
+export function StepDone({ week, name }: { week: DraftRef[][]; name: string | null }) {
   const today = useToday();
   const names = usePlanNames();
   const data = useLiveQuery(async () => {
@@ -27,7 +27,7 @@ export function StepDone({ week }: { week: DraftRef[][] }) {
   return (
     <div className="pt-6 text-center">
       <div aria-hidden className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-tint text-2xl text-ok ring-1 ring-ok/30">✓</div>
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight">Alles eingerichtet</h1>
+      <h1 className="mt-4 text-2xl font-semibold tracking-tight">Alles eingerichtet{name ? `, ${name}` : ""}</h1>
       <p className="mt-1 text-sm text-soft">
         {!hasWeek ? "Deine Woche kannst du später unter „Pläne“ anlegen."
           : todays.length ? <>Heute ist <b className="text-ink">{todays.map((i) => itemName(names, i)).join(" + ")}</b> dran.</>

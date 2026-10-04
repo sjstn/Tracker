@@ -11,6 +11,17 @@ describe("Einstellungen für den Assistenten", () => {
     expect(s.birthYear).toBeNull();
     expect(s.setupSeen).toBe(false);
     expect(s.weekCardHidden).toBe(false);
+    expect(s.name).toBeNull();
+    expect(s.birthDate).toBeNull();
+  });
+
+  it("verwerfen ungültige Namen und Geburtsdaten", async () => {
+    const db = new AppDB("settings-" + Math.random());
+    await db.open();
+    await db.settings.put({ ...DEFAULT_SETTINGS, name: "  ", birthDate: "04.10.2004" } as never);
+    expect(await getSettings(db)).toMatchObject({ name: null, birthDate: null });
+    await db.settings.put({ ...DEFAULT_SETTINGS, name: " Justin ", birthDate: "2004-10-04" });
+    expect(await getSettings(db)).toMatchObject({ name: "Justin", birthDate: "2004-10-04" });
   });
 
   it("geben nie das geteilte Standard-Array der Musterwoche zurück", async () => {

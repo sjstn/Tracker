@@ -5,13 +5,15 @@ import type { ProgressionFields, Routine, RunPlan, Settings, ShiftMode } from ".
 import { isoDate } from "../lib/format";
 import { progressionDefaults } from "../lib/progression";
 import { defaultRunForm, missingNames, nameKey, runPlanNames, toTemplate, weekFromTemplate, type DraftRef } from "../lib/presets";
-import { ageFromBirthYear, birthYearFromAge } from "../lib/profile";
+import { birthYearFromAge, currentAge } from "../lib/profile";
 import { formFromRunPlan, runPlanFromForm, validateRunPlan, type RunPlanForm } from "../lib/runTarget";
 
 /** Alles, was der Assistent sammelt; gespeichert wird erst mit completeSetup. */
 export interface SetupDraft {
+  name: string | null;
   heightCm: number | null;
   age: number | null;
+  birthDate: string | null; // geht vor dem Alter
   weightKg: number | null; // null = kein neuer Gewichtseintrag
   progression: ProgressionFields;
   week: DraftRef[][];
@@ -30,7 +32,7 @@ export async function loadSetupDraft(database: AppDB = db): Promise<SetupStart> 
   const week = weekFromTemplate(s.weekTemplate, routines, runPlans);
   return {
     draft: {
-      heightCm: s.heightCm, age: ageFromBirthYear(s.birthYear), weightKg: null,
+      name: s.name, heightCm: s.heightCm, age: currentAge(s), birthDate: s.birthDate, weightKg: null,
       progression: progressionDefaults(s), week, shiftMode: s.shiftMode,
       runTargets: Object.fromEntries(runPlans.map((p) => [nameKey(p.name), formFromRunPlan(p)])),
     },
@@ -46,7 +48,10 @@ export async function completeSetup(draft: SetupDraft, today = isoDate(), databa
     await database.settings.put({
       ...s, ...draft.progression, shiftMode: draft.shiftMode, setupSeen: true,
       ...(draft.heightCm !== null ? { heightCm: draft.heightCm } : {}),
-      ...(draft.age !== null ? { birthYear: birthYearFromAge(draft.age) } : {}),
+      ...(draft.name !== null ? { name: draft.name } : {}),
+      // Geburtsdatum geht vor; ein reines Alter ersetzt ein altes Datum
+      ...(draft.birthDate !== null ? { birthDate: draft.birthDate, birthYear: Number(draft.birthDate.slice(0, 4)) }
+        : draft.age !== null ? { birthYear: birthYearFromAge(draft.age), birthDate: null } : {}),
     });
     if (draft.weightKg !== null) await database.bodyweight.add({ weight: draft.weightKg, recordedAt: new Date().toISOString() });
 

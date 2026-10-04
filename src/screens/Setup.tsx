@@ -17,13 +17,16 @@ import { validateRunPlan } from "../lib/runTarget";
 type Step = "welcome" | "about" | "rules" | "preset" | "week" | "runs" | "done";
 const STEP_NO: Partial<Record<Step, number>> = { about: 1, rules: 2, preset: 3, week: 4, runs: 5 };
 
-const aboutFrom = (d: SetupDraft): AboutForm => ({ height: fmtInput(d.heightCm), age: fmtInput(d.age), weight: "" });
+const aboutFrom = (d: SetupDraft): AboutForm => ({
+  name: d.name ?? "", height: fmtInput(d.heightCm), ageMode: d.birthDate ? "date" : "age",
+  age: fmtInput(d.age), birthDate: d.birthDate ?? "", weight: "",
+});
 
 export function Setup({ startAt }: { startAt?: string }) {
   const loaded = useLiveQuery(() => loadSetupDraft(), []);
   const [start, setStart] = useState<SetupStart | null>(null); // Stand beim Öffnen, für „Überspringen“
   const [draft, setDraft] = useState<SetupDraft | null>(null);
-  const [about, setAbout] = useState<AboutForm>({ height: "", age: "", weight: "" });
+  const [about, setAbout] = useState<AboutForm>({ name: "", height: "", ageMode: "age", age: "", birthDate: "", weight: "" });
   const [preset, setPreset] = useState("hybrid");
   const [step, setStep] = useState<Step>(startAt === "week" ? "preset" : "welcome");
   const [presetWeek, setPresetWeek] = useState<DraftRef[][]>([]); // Woche aus dem Preset-Schritt, für „Überspringen“
@@ -97,7 +100,7 @@ export function Setup({ startAt }: { startAt?: string }) {
     if (busy) return;
     if (step === "about") {
       setAbout(aboutFrom(start.draft));
-      setDraft({ ...draft, heightCm: start.draft.heightCm, age: start.draft.age, weightKg: null });
+      setDraft({ ...draft, name: start.draft.name, heightCm: start.draft.heightCm, age: start.draft.age, birthDate: start.draft.birthDate, weightKg: null });
       go("rules");
     } else if (step === "rules") { setDraft({ ...draft, progression: start.draft.progression }); go("preset"); }
     else if (step === "week") await afterWeek({ ...draft, week: presetWeek.map((d) => [...d]), shiftMode: start.draft.shiftMode });
@@ -145,7 +148,7 @@ export function Setup({ startAt }: { startAt?: string }) {
             onMode={(shiftMode) => setDraft({ ...draft, shiftMode })} routines={known.routines} runPlans={known.runPlans} />
         )}
         {step === "runs" && <StepRuns names={runNames} value={draft.runTargets} onChange={(runTargets) => setDraft({ ...draft, runTargets })} errors={tried ? runErrors : {}} />}
-        {step === "done" && <StepDone week={draft.week} />}
+        {step === "done" && <StepDone week={draft.week} name={draft.name} />}
       </div>
       <div className="sticky bottom-0 grid gap-1 bg-bg pt-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}>
         <Button variant="plate" disabled={busy} onClick={next}>{labels[step]}</Button>
@@ -160,7 +163,7 @@ function Welcome() {
   return (
     <div className="pt-12 text-center">
       <div aria-hidden className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-tint text-3xl ring-1 ring-plate/30">🏋️</div>
-      <h1 className="mt-5 text-2xl font-semibold tracking-tight">Willkommen bei<br />Satz & Strecke</h1>
+      <h1 className="mt-5 text-2xl font-semibold tracking-tight">Willkommen bei Tracker</h1>
       <p className="mt-3 text-sm text-soft">In zwei Minuten eingerichtet: ein paar Angaben zu dir, deine Trainingsregeln und deine Woche. Danach schlägt dir die App jeden Tag das passende Training vor.</p>
       <p className="mt-4 text-xs text-soft">Alle Daten bleiben auf diesem Gerät.</p>
     </div>

@@ -91,12 +91,20 @@ describe("Assistent speichern", () => {
     expect(await db.bodyweight.count()).toBe(0);
   });
 
+  it("speichert Name und Geburtsdatum, ein reines Alter löscht das Datum", async () => {
+    const db = await freshDb();
+    await completeSetup(await draftFor(db, { name: "Justin", birthDate: "2004-10-04", age: null }), isoDate(), db);
+    expect(await getSettings(db)).toMatchObject({ name: "Justin", birthDate: "2004-10-04", birthYear: 2004 });
+    await completeSetup(await draftFor(db, { birthDate: null, age: 30 }), isoDate(), db);
+    expect(await getSettings(db)).toMatchObject({ name: "Justin", birthDate: null, birthYear: new Date().getFullYear() - 30 });
+  });
+
   it("loadSetupDraft füllt aus dem Bestand vor", async () => {
     const db = await freshDb();
     await db.settings.put({ ...(await getSettings(db)), heightCm: 180, birthYear: new Date().getFullYear() - 40 });
     await db.bodyweight.add({ weight: 81, recordedAt: new Date().toISOString() });
     const start = await loadSetupDraft(db);
-    expect(start.draft).toMatchObject({ heightCm: 180, age: 40, weightKg: null, shiftMode: "continuous" });
+    expect(start.draft).toMatchObject({ heightCm: 180, age: 40, birthDate: null, name: null, weightKg: null, shiftMode: "continuous" });
     expect(start.draft.progression.repTargetMin).toBe(5);
     expect(start).toMatchObject({ hasWeek: false, lastWeight: 81 });
   });

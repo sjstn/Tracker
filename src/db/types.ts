@@ -58,6 +58,10 @@ export interface Settings extends ProgressionFields {
   weekTemplate: TrainingRef[][];
   shiftMode: ShiftMode;
   /** Aus dem Alter berechnet, damit es nicht veraltet */
+  /** Vorname für die Begrüßung */
+  name: string | null;
+  /** Geburtsdatum YYYY-MM-DD; wenn gesetzt, geht es vor dem Geburtsjahr */
+  birthDate: string | null;
   birthYear: number | null;
   /** Assistent wurde mit „Fertig" oder „Später" verlassen */
   setupSeen: boolean;
