@@ -1,3 +1,5 @@
+import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useRef, useState } from "react";
 import { db, getSettings } from "../db/db";
@@ -15,6 +17,8 @@ export function Workout() {
   const exercises = useLiveQuery(() => db.exercises.toArray(), []) ?? [];
   const settings = useLiveQuery(() => getSettings(), []);
   const [picker, setPicker] = useState(false);
+  // Beim Umsortieren klappen die Übungen zu einer kompakten Liste zusammen, gemerkt wird die zuletzt bewegte
+  const [sorting, setSorting] = useState<string | null>(null);
   const loaded = useRef(false);
 
   // Einmal aus der Datenbank laden, danach ist der lokale Zustand führend und wird mitgeschrieben
@@ -23,6 +27,13 @@ export function Workout() {
   }, [stored]);
   useEffect(() => { if (draft) db.drafts.put(draft); }, [draft]);
   useWakeLock(!!draft);
+  // Nach dem Umsortieren zur zuletzt bewegten Übung zurückspringen
+  const lastSorted = useRef<string | null>(null);
+  useEffect(() => {
+    if (sorting) { lastSorted.current = sorting; return; }
+    if (lastSorted.current) document.getElementById(`ex-${lastSorted.current}`)?.scrollIntoView({ block: "center" });
+    lastSorted.current = null;
+  }, [sorting]);
 
   if (stored === undefined || (stored && !draft)) return null;
   if (!draft) {
@@ -76,11 +87,11 @@ export function Workout() {
     if (!confirm(`${names.get(draft.exercises[xi].exerciseId)?.name ?? "Übung"} aus diesem Training entfernen?`)) return;
     update((d) => { d.exercises.splice(xi, 1); });
   };
-  const move = (xi: number, dir: -1 | 1) => update((d) => {
-    const j = xi + dir;
-    if (j < 0 || j >= d.exercises.length) return;
-    [d.exercises[xi], d.exercises[j]] = [d.exercises[j], d.exercises[xi]];
-  });
+  const reorder = (from: number, to: number) => {
+    if (to < 0 || to >= draft.exercises.length || from === to) return;
+    setSorting(draft.exercises[from].key);
+    update((d) => { d.exercises = arrayMove(d.exercises, from, to); });
+  };
   const addExercise = async (id: number) => {
     const x = await buildDraftExercise(id, null, []);
     update((d) => { d.exercises.push(x); });
@@ -112,27 +123,30 @@ export function Workout() {
 
       {!draft.exercises.length && <Empty>Füg die erste Übung hinzu.</Empty>}
 
-      {draft.exercises.map((x, xi) => (
-        <ExerciseCard key={x.key} x={x} name={names.get(x.exerciseId)?.name ?? "Übung"}
-          onField={(si, p) => setField(xi, si, p)} onToggle={(si) => toggle(xi, si)}
-          onAddSet={() => addSet(xi)} onRemoveSet={() => removeLastSet(xi)} onRemove={() => removeExercise(xi)}
-          onUp={xi > 0 ? () => move(xi, -1) : undefined} onDown={xi < draft.exercises.length - 1 ? () => move(xi, 1) : undefined}
-          onInfo={() => navigate(`exercise/${x.exerciseId}`)} />
-      ))}
+      {sorting !== null ? (
+        <ReorderList exercises={draft.exercises} names={names} onReorder={reorder} onDone={() => setSorting(null)} />
+      ) : <>
+        {draft.exercises.map((x, xi) => (
+          <ExerciseCard key={x.key} x={x} name={names.get(x.exerciseId)?.name ?? "Übung"}
+            onField={(si, p) => setField(xi, si, p)} onToggle={(si) => toggle(xi, si)}
+            onAddSet={() => addSet(xi)} onRemoveSet={() => removeLastSet(xi)} onRemove={() => removeExercise(xi)}
+            onSort={draft.exercises.length > 1 ? () => setSorting(x.key) : undefined}
+            onInfo={() => navigate(`exercise/${x.exerciseId}`)} />
+        ))}
+        <Button variant="ghost" className="mt-1 w-full" onClick={() => setPicker(true)}>Übung hinzufügen</Button>
 
-      <Button variant="ghost" className="mt-1 w-full" onClick={() => setPicker(true)}>Übung hinzufügen</Button>
+        <label className="mt-6 block">
+          <span className="mb-1.5 block text-sm font-medium">Notiz</span>
+          <textarea value={draft.notes} onChange={(e) => update((d) => { d.notes = e.target.value; })} rows={2}
+            placeholder="Wie lief es? Schmerzen, Schlaf, Technik"
+            className="w-full rounded-lg border border-line bg-surface p-3 text-ink shadow-sm outline-none placeholder:text-soft/70 focus:border-plate focus:ring-2 focus:ring-plate/30" />
+        </label>
 
-      <label className="mt-6 block">
-        <span className="mb-1.5 block text-sm font-medium">Notiz</span>
-        <textarea value={draft.notes} onChange={(e) => update((d) => { d.notes = e.target.value; })} rows={2}
-          placeholder="Wie lief es? Schmerzen, Schlaf, Technik"
-          className="w-full rounded-lg border border-line bg-surface p-3 text-ink shadow-sm outline-none placeholder:text-soft/70 focus:border-plate focus:ring-2 focus:ring-plate/30" />
-      </label>
-
-      <div className="mt-5 grid gap-2">
-        <Button variant="primary" className="text-base" onClick={finish}>Training beenden</Button>
-        <Button variant="danger" onClick={discard}>Training verwerfen</Button>
-      </div>
+        <div className="mt-5 grid gap-2">
+          <Button variant="primary" className="text-base" onClick={finish}>Training beenden</Button>
+          <Button variant="danger" onClick={discard}>Training verwerfen</Button>
+        </div>
+      </>}
 
       <ExercisePicker open={picker} onClose={() => setPicker(false)} onPick={addExercise} />
       {draft.restEndsAt && <RestTimer endsAt={draft.restEndsAt}
@@ -141,16 +155,71 @@ export function Workout() {
   );
 }
 
-function ExerciseCard({ x, name, onField, onToggle, onAddSet, onRemoveSet, onRemove, onUp, onDown, onInfo }: {
+/** Kompakte Liste nur mit Namen: Übungen am Griff ziehen oder per Pfeil eine Position weiter. */
+function ReorderList({ exercises, names, onReorder, onDone }: {
+  exercises: DraftExercise[]; names: Map<number, Exercise>; onReorder: (from: number, to: number) => void; onDone: () => void;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { ref.current?.scrollIntoView({ block: "start" }); }, []);
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over) return;
+    onReorder(exercises.findIndex((x) => x.key === active.id), exercises.findIndex((x) => x.key === over.id));
+  };
+  return (
+    <div ref={ref} className="scroll-mt-16">
+      <div className="mb-2 flex items-center gap-2">
+        <p className="flex-1 text-sm text-soft">Am Griff ⠿ ziehen oder mit den Pfeilen verschieben.</p>
+        <Button variant="primary" className="min-h-10 px-4" onClick={onDone}>Fertig</Button>
+      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={exercises.map((x) => x.key)} strategy={verticalListSortingStrategy}>
+          <div className="grid gap-2">
+            {exercises.map((x, i) => (
+              <ReorderRow key={x.key} x={x} name={names.get(x.exerciseId)?.name ?? "Übung"}
+                onUp={i > 0 ? () => onReorder(i, i - 1) : undefined}
+                onDown={i < exercises.length - 1 ? () => onReorder(i, i + 1) : undefined} />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+    </div>
+  );
+}
+
+function ReorderRow({ x, name, onUp, onDown }: { x: DraftExercise; name: string; onUp?: () => void; onDown?: () => void }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: x.key });
+  const style = { transform: transform ? `translate3d(0, ${transform.y}px, 0)` : undefined, transition };
+  const done = x.sets.filter((s) => s.completed).length;
+  const allDone = x.sets.length > 0 && done === x.sets.length;
+  return (
+    <div ref={setNodeRef} style={style}
+      className={`relative flex items-center rounded-xl border bg-surface ${isDragging ? "z-10 border-plate/40 shadow-lg" : allDone ? "border-ok/60 shadow-sm" : "border-line shadow-sm"}`}>
+      <span ref={setActivatorNodeRef} {...listeners} {...attributes} aria-label={`${name} verschieben`}
+        className="no-callout flex h-14 w-11 shrink-0 cursor-grab touch-none items-center justify-center text-lg text-soft">⠿</span>
+      <span className="min-w-0 flex-1 py-2">
+        <span className="block truncate font-semibold">{name}</span>
+        <span className={`text-xs tnum ${allDone ? "text-ok" : "text-soft"}`}>{done}/{x.sets.length} Sätze</span>
+      </span>
+      <button type="button" aria-label={`${name} nach oben`} disabled={!onUp} onClick={onUp} className="h-12 w-11 text-soft disabled:opacity-25">▲</button>
+      <button type="button" aria-label={`${name} nach unten`} disabled={!onDown} onClick={onDown} className="mr-1 h-12 w-11 text-soft disabled:opacity-25">▼</button>
+    </div>
+  );
+}
+
+function ExerciseCard({ x, name, onField, onToggle, onAddSet, onRemoveSet, onRemove, onSort, onInfo }: {
   x: DraftExercise; name: string;
   onField: (si: number, p: Partial<DraftSet>) => void; onToggle: (si: number) => void;
-  onAddSet: () => void; onRemoveSet: () => void; onRemove: () => void; onUp?: () => void; onDown?: () => void; onInfo: () => void;
+  onAddSet: () => void; onRemoveSet: () => void; onRemove: () => void; onSort?: () => void; onInfo: () => void;
 }) {
   const [menu, setMenu] = useState(false);
   let working = 0;
   const allDone = x.sets.length > 0 && x.sets.every((s) => s.completed);
   return (
-    <section className={`mb-3 rounded-xl border bg-surface p-3 shadow-sm ${allDone ? "border-ok/60 ring-1 ring-ok/30" : "border-line"}`}>
+    <section id={`ex-${x.key}`} className={`mb-3 scroll-mt-16 rounded-xl border bg-surface p-3 shadow-sm ${allDone ? "border-ok/60 ring-1 ring-ok/30" : "border-line"}`}>
       <div className="mb-2 flex items-start gap-2">
         <button type="button" onClick={onInfo} className="flex-1 pt-1 text-left text-base font-semibold leading-tight">{name}</button>
         <button type="button" aria-label="Optionen für diese Übung" aria-expanded={menu} onClick={() => setMenu(!menu)}
@@ -158,8 +227,7 @@ function ExerciseCard({ x, name, onField, onToggle, onAddSet, onRemoveSet, onRem
       </div>
       {menu && (
         <div className="mb-3 flex flex-wrap gap-2">
-          {onUp && <Button className="min-h-10 px-3 text-sm" onClick={onUp}>Nach oben</Button>}
-          {onDown && <Button className="min-h-10 px-3 text-sm" onClick={onDown}>Nach unten</Button>}
+          {onSort && <Button className="min-h-10 px-3 text-sm" onClick={() => { setMenu(false); onSort(); }}>Reihenfolge ändern</Button>}
           <Button variant="danger" className="min-h-10 px-3 text-sm" onClick={onRemove}>Übung entfernen</Button>
         </div>
       )}
