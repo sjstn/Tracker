@@ -6,8 +6,10 @@ import { db, getSettings } from "../db/db";
 import { buildDraftExercise, effectiveSet, finishWorkout, lastWorkingSet } from "../db/repo";
 import type { DraftExercise, DraftSet, Exercise, WorkoutDraft } from "../db/types";
 import { ExercisePicker } from "../components/ExercisePicker";
-import { Button, Empty, Header, NumberInput, toast } from "../components/ui";
+import { Keypad } from "../components/Keypad";
+import { Button, Empty, Header, inputCls, toast } from "../components/ui";
 import { clock, fmtInput, niceDate } from "../lib/format";
+import { pressKey, stepValue } from "../lib/keypad";
 import { progressionDefaults, resolveProgression, suggestWorkingSet } from "../lib/progression";
 import { navigate } from "../lib/router";
 
@@ -19,6 +21,8 @@ export function Workout() {
   const [picker, setPicker] = useState(false);
   // Beim Umsortieren klappen die Übungen zu einer kompakten Liste zusammen, gemerkt wird die zuletzt bewegte
   const [sorting, setSorting] = useState<string | null>(null);
+  // Feld, in das das Zahlenfeld gerade schreibt; fresh = die erste Taste ersetzt den Wert
+  const [entry, setEntry] = useState<Entry | null>(null);
   const loaded = useRef(false);
 
   // Einmal aus der Datenbank laden, danach ist der lokale Zustand führend und wird mitgeschrieben
@@ -34,6 +38,10 @@ export function Workout() {
     if (lastSorted.current) document.getElementById(`ex-${lastSorted.current}`)?.scrollIntoView({ block: "center" });
     lastSorted.current = null;
   }, [sorting]);
+  // Gewählten Satz über dem Zahlenfeld halten
+  useEffect(() => {
+    if (entry) document.getElementById(`set-${entry.key}-${entry.si}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [entry?.key, entry?.si]);
 
   if (stored === undefined || (stored && !draft)) return null;
   if (!draft) {
@@ -52,16 +60,44 @@ export function Workout() {
   const update = (fn: (d: WorkoutDraft) => void) => setDraft((d) => { if (!d) return d; const c = structuredClone(d); fn(c); return c; });
   const setField = (xi: number, si: number, patch: Partial<DraftSet>) => update((d) => Object.assign(d.exercises[xi].sets[si], patch));
 
-  const toggle = (xi: number, si: number) => {
+  /** Hakt einen Satz ab; fehlt etwas, sagt es, welches Feld. */
+  const complete = (xi: number, si: number): "weight" | "reps" | null => {
     const s = draft.exercises[xi].sets[si];
-    if (s.completed) { setField(xi, si, { completed: false }); return; }
+    if (s.completed) return null;
     const eff = effectiveSet(s);
-    if (!Number.isFinite(eff.weight)) { toast("Trag zuerst das Gewicht ein."); return; }
-    if (!(eff.reps > 0)) { toast("Trag zuerst die Wiederholungen ein."); return; }
+    if (!Number.isFinite(eff.weight)) { toast("Trag zuerst das Gewicht ein."); return "weight"; }
+    if (!(eff.reps > 0)) { toast("Trag zuerst die Wiederholungen ein."); return "reps"; }
     update((d) => {
       Object.assign(d.exercises[xi].sets[si], { completed: true, weight: fmtInput(eff.weight), reps: fmtInput(eff.reps) });
       if (!s.isWarmup && settings?.restSeconds) d.restEndsAt = Date.now() + settings.restSeconds * 1000;
     });
+    return null;
+  };
+  const toggle = (xi: number, si: number) => {
+    if (draft.exercises[xi].sets[si].completed) setField(xi, si, { completed: false });
+    else complete(xi, si);
+  };
+
+  // Zahlenfeld: tippen, −/+, Weiter (kg → Wdh.), ✓ (Wdh. → Satz abhaken)
+  const ei = entry ? draft.exercises.findIndex((x) => x.key === entry.key) : -1;
+  const active = entry && ei >= 0 && draft.exercises[ei].sets[entry.si] ? { ...entry, xi: ei, set: draft.exercises[ei].sets[entry.si] } : null;
+  const keyIn = (k: string) => {
+    if (!active) return;
+    setField(active.xi, active.si, { [active.field]: pressKey(active.set[active.field], k, active.fresh, active.field === "weight") });
+    setEntry({ ...active, fresh: false });
+  };
+  const stepIn = (dir: -1 | 1) => {
+    if (!active) return;
+    const weight = active.field === "weight";
+    const delta = weight ? dir * (settings?.weightRounding || 2.5) : dir;
+    setField(active.xi, active.si, { [active.field]: stepValue(active.set[active.field], weight ? active.set.targetWeight : active.set.targetReps, delta) });
+    setEntry({ ...active, fresh: false });
+  };
+  const nextIn = () => {
+    if (!active) return;
+    if (active.field === "weight") { setEntry({ key: active.key, si: active.si, field: "reps", fresh: true }); return; }
+    const missing = complete(active.xi, active.si);
+    setEntry(missing ? { key: active.key, si: active.si, field: missing, fresh: true } : null);
   };
 
   const addSet = async (xi: number) => {
@@ -89,6 +125,7 @@ export function Workout() {
   };
   const reorder = (from: number, to: number) => {
     if (to < 0 || to >= draft.exercises.length || from === to) return;
+    setEntry(null);
     setSorting(draft.exercises[from].key);
     update((d) => { d.exercises = arrayMove(d.exercises, from, to); });
   };
@@ -116,7 +153,7 @@ export function Workout() {
 
   return (
     <div className="flex flex-1 flex-col"
-      style={draft.restEndsAt ? undefined : { paddingBottom: "calc(var(--safe-bottom) + 1rem)" }}>
+      style={draft.restEndsAt || active ? undefined : { paddingBottom: "calc(var(--safe-bottom) + 1rem)" }}>
       <Header title={draft.routineName ?? "Freies Training"} onBack={() => navigate("home")}
         action={<Elapsed since={draft.startedAt} />} />
       {draft.performedOn && <p className="-mt-1 mb-3 text-sm text-soft">Nachtrag für {niceDate(draft.performedOn)}</p>}
@@ -128,9 +165,10 @@ export function Workout() {
       ) : <>
         {draft.exercises.map((x, xi) => (
           <ExerciseCard key={x.key} x={x} name={names.get(x.exerciseId)?.name ?? "Übung"}
-            onField={(si, p) => setField(xi, si, p)} onToggle={(si) => toggle(xi, si)}
+            active={active?.key === x.key ? active : null} onOpen={(si, field) => setEntry({ key: x.key, si, field, fresh: true })}
+            onToggle={(si) => toggle(xi, si)}
             onAddSet={() => addSet(xi)} onRemoveSet={() => removeLastSet(xi)} onRemove={() => removeExercise(xi)}
-            onSort={draft.exercises.length > 1 ? () => setSorting(x.key) : undefined}
+            onSort={draft.exercises.length > 1 ? () => { setEntry(null); setSorting(x.key); } : undefined}
             onInfo={() => navigate(`exercise/${x.exerciseId}`)} />
         ))}
         <Button variant="ghost" className="mt-1 w-full" onClick={() => setPicker(true)}>Übung hinzufügen</Button>
@@ -149,8 +187,16 @@ export function Workout() {
       </>}
 
       <ExercisePicker open={picker} onClose={() => setPicker(false)} onPick={addExercise} />
-      {draft.restEndsAt && <RestTimer endsAt={draft.restEndsAt}
-        onChange={(t) => update((d) => { d.restEndsAt = t; })} />}
+      {(draft.restEndsAt || active) && (
+        <div data-keypad className="sticky bottom-0 z-30 -mx-4 mt-auto border-t border-line bg-surface/95 shadow-[0_-4px_12px_rgb(0_0_0/0.04)] backdrop-blur"
+          style={{ paddingBottom: "calc(var(--safe-bottom) + 0.75rem)" }}>
+          {draft.restEndsAt && <RestTimer endsAt={draft.restEndsAt} onChange={(t) => update((d) => { d.restEndsAt = t; })} />}
+          {active && <Keypad title={`${names.get(draft.exercises[active.xi].exerciseId)?.name ?? "Übung"} · Satz ${setLabel(draft.exercises[active.xi], active.si)} · ${active.field === "weight" ? "kg" : "Wdh."}`}
+            decimal={active.field === "weight"} last={active.field === "reps"}
+            onKey={keyIn} onStep={stepIn} onNext={nextIn} onClose={() => setEntry(null)} />}
+          <KeypadKeys enabled={!!active} onKey={keyIn} onNext={nextIn} onClose={() => setEntry(null)} />
+        </div>
+      )}
     </div>
   );
 }
@@ -210,9 +256,52 @@ function ReorderRow({ x, name, onUp, onDown }: { x: DraftExercise; name: string;
   );
 }
 
-function ExerciseCard({ x, name, onField, onToggle, onAddSet, onRemoveSet, onRemove, onSort, onInfo }: {
+type Entry = { key: string; si: number; field: "weight" | "reps"; fresh: boolean };
+
+/** "A" für Aufwärmsätze, sonst die Nummer unter den Arbeitssätzen. */
+const setLabel = (x: DraftExercise, si: number) =>
+  x.sets[si].isWarmup ? "A" : String(x.sets.slice(0, si + 1).filter((s) => !s.isWarmup).length);
+
+/** Hardware-Tastatur bedient das Zahlenfeld mit, ein Tipp daneben schließt es. */
+function KeypadKeys({ enabled, onKey, onNext, onClose }: { enabled: boolean; onKey: (k: string) => void; onNext: () => void; onClose: () => void }) {
+  useEffect(() => {
+    if (!enabled) return;
+    const onDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.metaKey || e.ctrlKey) return;
+      const k = /^\d$/.test(e.key) ? e.key : e.key === "," || e.key === "." ? "," : e.key === "Backspace" ? "back" : null;
+      if (k) onKey(k);
+      else if (e.key === "Enter" || e.key === "Tab") onNext();
+      else if (e.key === "Escape") onClose();
+      else return;
+      e.preventDefault();
+    };
+    // Tipp daneben schließt wie bei einer Tastatur; click statt pointerdown, damit Scrollen nicht schließt
+    const onClick = (e: MouseEvent) => { if (!(e.target as Element).closest?.("[data-keypad],[data-setfield]")) onClose(); };
+    window.addEventListener("keydown", onDown);
+    document.addEventListener("click", onClick);
+    return () => { window.removeEventListener("keydown", onDown); document.removeEventListener("click", onClick); };
+  }, [enabled, onKey, onNext, onClose]);
+  return null;
+}
+
+/** Feld eines Satzes; öffnet das Zahlenfeld statt der iOS-Tastatur. */
+function SetField({ id, value, placeholder, label, active, fresh, onOpen }: {
+  id?: string; value: string; placeholder: string; label: string; active: boolean; fresh: boolean; onOpen: () => void;
+}) {
+  return (
+    <button type="button" id={id} data-setfield onClick={onOpen} aria-label={`${label}: ${value || placeholder}`} aria-pressed={active}
+      className={`${inputCls} flex w-full items-center text-left font-semibold tnum ${active ? "border-plate ring-2 ring-plate/30" : ""}`}>
+      {value
+        ? <span className={active && fresh ? "rounded bg-plate/25" : ""}>{value}</span>
+        : <span className="font-normal text-soft/70">{placeholder}</span>}
+      {active && !fresh && <span aria-hidden className="ml-px h-6 w-0.5 animate-pulse bg-plate" />}
+    </button>
+  );
+}
+
+function ExerciseCard({ x, name, active, onOpen, onToggle, onAddSet, onRemoveSet, onRemove, onSort, onInfo }: {
   x: DraftExercise; name: string;
-  onField: (si: number, p: Partial<DraftSet>) => void; onToggle: (si: number) => void;
+  active: Entry | null; onOpen: (si: number, field: "weight" | "reps") => void; onToggle: (si: number) => void;
   onAddSet: () => void; onRemoveSet: () => void; onRemove: () => void; onSort?: () => void; onInfo: () => void;
 }) {
   const [menu, setMenu] = useState(false);
@@ -241,10 +330,10 @@ function ExerciseCard({ x, name, onField, onToggle, onAddSet, onRemoveSet, onRem
             <div className={`grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 ${s.completed ? "opacity-70" : ""}`}>
               <span className={`text-center text-sm font-semibold ${s.isWarmup ? "text-soft" : ""}`}
                 title={s.isWarmup ? "Aufwärmsatz" : undefined}>{label}</span>
-              <NumberInput aria-label={`Gewicht in kg, Satz ${label}`} value={s.weight} placeholder={fmtInput(s.targetWeight) || "kg"}
-                onChange={(v) => onField(si, { weight: v })} className="tnum font-semibold" />
-              <NumberInput decimal={false} aria-label={`Wiederholungen, Satz ${label}`} value={s.reps} placeholder={fmtInput(s.targetReps) || "Wdh."}
-                onChange={(v) => onField(si, { reps: v })} className="tnum font-semibold" />
+              <SetField id={`set-${x.key}-${si}`} label={`Gewicht in kg, Satz ${label}`} value={s.weight} placeholder={fmtInput(s.targetWeight) || "kg"}
+                active={active?.si === si && active.field === "weight"} fresh={!!active?.fresh} onOpen={() => onOpen(si, "weight")} />
+              <SetField label={`Wiederholungen, Satz ${label}`} value={s.reps} placeholder={fmtInput(s.targetReps) || "Wdh."}
+                active={active?.si === si && active.field === "reps"} fresh={!!active?.fresh} onOpen={() => onOpen(si, "reps")} />
               <button type="button" onClick={() => onToggle(si)} aria-pressed={s.completed}
                 aria-label={s.completed ? `Satz ${label} wieder öffnen` : `Satz ${label} abhaken`}
                 className={`h-12 w-12 rounded-lg border text-xl font-bold ${s.completed ? "border-transparent bg-ok text-white shadow-sm" : "border-line bg-surface text-soft shadow-sm"}`}>✓</button>
@@ -276,8 +365,7 @@ function RestTimer({ endsAt, onChange }: { endsAt: number; onChange: (t: number 
   }, [left]);
   const done = left <= 0;
   return (
-    <div className="sticky bottom-0 z-30 -mx-4 mt-auto border-t border-line bg-surface/95 px-4 pt-3 shadow-[0_-4px_12px_rgb(0_0_0/0.04)] backdrop-blur"
-      style={{ paddingBottom: "calc(var(--safe-bottom) + 0.75rem)" }} role="timer" aria-live="off">
+    <div className="px-4 pt-3" role="timer" aria-live="off">
       <div className="mx-auto flex max-w-xl items-center gap-3">
         <div className="flex-1">
           <span className="block text-xs text-soft">{done ? "Pause vorbei" : "Pause"}</span>
