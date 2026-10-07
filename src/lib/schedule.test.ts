@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PlanDay, ShiftMode, TrainingRef } from "../db/types";
-import { generate, moveItem, overdue, postponeFrom, postponeOverdue, pullForward, rebuildFrom, removeRef, skipDay, skipOverdue, swapDays, type PlanCtx } from "./schedule";
+import { generate, moveItem, overdue, postponeFrom, postponeOverdue, pullForward, rebuildFrom, removeRef, replaceToday, skipDay, skipOverdue, swapDays, type PlanCtx } from "./schedule";
 
 const R = (id: number): TrainingRef => ({ kind: "routine", id });
 const L = (id: number): TrainingRef => ({ kind: "runPlan", id });
@@ -195,5 +195,34 @@ describe("Tauschen und Ziehen", () => {
     const days = removeRef(markDone(twoWeeks(), "2026-10-06", "Push"), { kind: "routine", id: 1 }, "2026-10-06");
     expect(view(days, "2026-10-06", "2026-10-06")).toEqual(["06 Push✓"]);
     expect(view(days, "2026-10-13", "2026-10-13")).toEqual(["13 –"]);
+  });
+});
+
+describe("replaceToday", () => {
+  const z2 = { id: "neu", ref: L(1), status: "planned" as const, label: "Zone 2" };
+
+  it("lässt das Geplante ausfallen und legt das Ersatztraining auf heute", () => {
+    const out = replaceToday(twoWeeks(), "2026-10-10", z2, "skip", ctx());
+    expect(view(out, "2026-10-10", "2026-10-11")).toEqual(["10 Intervall✗+Zone 2", "11 Beine"]);
+  });
+
+  it("verschiebt das Geplante und legt das Ersatztraining auf heute", () => {
+    const out = replaceToday(twoWeeks(), "2026-10-10", z2, "shift", ctx());
+    expect(view(out, "2026-10-10", "2026-10-12")).toEqual(["10 Zone 2", "11 Intervall", "12 Beine"]);
+  });
+
+  it("verschiebt in der festen Woche bis zum nächsten freien Tag", () => {
+    const out = replaceToday(twoWeeks(ctx("fixedWeek")), "2026-10-08", z2, "shift", ctx("fixedWeek"));
+    expect(view(out, "2026-10-08", "2026-10-10")).toEqual(["08 Zone 2", "09 Pull+Z2 kurz", "10 Intervall"]);
+  });
+
+  it("legt an einem Ruhetag nur dazu, Erledigtes bleibt", () => {
+    expect(view(replaceToday(twoWeeks(), "2026-10-09", z2, "shift", ctx()), "2026-10-09", "2026-10-10")).toEqual(["09 Zone 2", "10 Intervall"]);
+    const done = markDone(twoWeeks(), "2026-10-06", "Push");
+    expect(view(replaceToday(done, "2026-10-06", z2, "skip", ctx()), "2026-10-06", "2026-10-06")).toEqual(["06 Push✓+Zone 2"]);
+  });
+
+  it("legt den Tag an, wenn er noch fehlt", () => {
+    expect(view(replaceToday([], "2026-10-07", z2, "skip", ctx()), "2026-10-07", "2026-10-07")).toEqual(["07 Zone 2"]);
   });
 });

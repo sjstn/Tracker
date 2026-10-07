@@ -154,6 +154,16 @@ export function pullForward(days: PlanDay[], today: string, target: string): Pla
   return out;
 }
 
+/** Heute etwas anderes machen: das Geplante fällt aus oder rückt nach, `item` kommt auf heute. */
+export function replaceToday(days: PlanDay[], today: string, item: PlanItem, how: "shift" | "skip", ctx: PlanCtx): PlanDay[] {
+  const busy = openItems(index(days).get(today)).length > 0;
+  const out = !busy ? copy(days) : how === "shift" ? postponeFrom(days, today, today, ctx) : skipDay(days, today);
+  const day = index(out).get(today);
+  if (day) day.items.push({ ...item });
+  else out.push({ date: today, seq: null, items: [{ ...item }] });
+  return out.sort(byDate);
+}
+
 export function moveItem(days: PlanDay[], itemId: string, target: string, how: "add" | "swap", today: string): PlanDay[] {
   const out = copy(days);
   const src = out.find((d) => d.items.some((i) => i.id === itemId && isOpen(i)));
