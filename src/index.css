@@ -70,15 +70,16 @@
 
 :root { box-sizing: border-box; --safe-bottom: env(safe-area-inset-bottom, 0px); }
 *, *::before, *::after { box-sizing: inherit; }
-/* iOS 26 lässt die Home-Bildschirm-App unten ein Stück zu kurz enden und zeichnet darunter nur den Hintergrund von html.
-   body malt die App grau; der Streifen darunter bekommt die Farbe der Tab-Leiste (data-nav setzt App.tsx). */
+/* Mit viewport-fit=cover + black-translucent schiebt iOS die Seite unter die Statusleiste, ohne dass 100% mitwächst:
+   unten bliebe ein Streifen in Höhe der Statusleiste. 100vh ist die volle Bildschirmhöhe, so reicht die Tab-Leiste bis zum Rand.
+   Falls doch ein Streifen bleibt, hat er wenigstens die Farbe der Tab-Leiste (data-nav setzt App.tsx). */
 html { background: var(--bg); }
 html[data-nav="on"] { background: var(--surface); }
-html { height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; }
+html { height: 100vh; overflow: hidden; -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none;
-  height: 100%; overflow: hidden;
+  height: 100vh; overflow: hidden;
 }
 #root { height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
 /* iOS zoomt bei Eingabefeldern unter 16px – daher nie kleiner */
